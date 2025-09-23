@@ -1,0 +1,26 @@
+{
+   "manifest_version": 3,
+   "name": "Tailwind Chrome Extension",
+   "version": "1.0.0",
+   "description": "TailwindCSS 기반 React 크롬 확장 프로그램",
+   "action": {
+      "default_popup": "popup/index.html"
+   },
+   "options_page": "options/index.html",
+   "background": {
+      "service_worker": "background.js",
+      "type": "module"
+   },
+   "content_scripts": [
+      {
+         "matches": ["<all_urls>"],
+         "js": ["content.js"]
+      }
+   ],
+   "permissions": ["storage", "activeTab", "scripting"],
+   "icons": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+   }
+}

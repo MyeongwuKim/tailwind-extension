@@ -20,7 +20,7 @@ export default function Popup() {
 
    return (
       <div className="p-4 w-48">
-         <h1 className="font-bold mb-2">Tailwind Inspector</h1>
+         <h1 className="font-bold mb-2 ">Tailwind Inspector</h1>
          <button
             onClick={toggle}
             className={`px-3 py-2 rounded text-white w-full ${

@@ -1,39 +1,43 @@
-import "../index.css";
+import "../global.css";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import React, { useEffect } from "react";
-import Panel from "../components/Panel";
 import { initInspector } from "./inspector";
+import Popover from "../components/Popover";
+import tailwindCss from "../global.css?inline"; // ✅ string으로 가져옴
 
-const container = document.createElement("div");
-container.id = "tw-panel-root";
-document.body.appendChild(container);
+// 1. 호스트 엘리먼트 만들기
+const host = document.createElement("div");
+host.id = "tw-panel-root";
+document.body.appendChild(host);
 
-const root = createRoot(container);
+// 2. Shadow Root 붙이기
+const shadow = host.attachShadow({ mode: "open" });
 
-const App = () => {
-   const [target, setTarget] = React.useState<HTMLElement | null>(null);
+const styleEl = document.createElement("style");
+styleEl.textContent = tailwindCss;
+shadow.appendChild(styleEl);
 
-   React.useEffect(() => {
+// 4. React 마운트 컨테이너 추가
+const shadowContainer = document.createElement("div");
+shadow.appendChild(shadowContainer);
+
+// 5. React Root 연결
+const root = createRoot(shadowContainer);
+
+function App() {
+   const [target, setTarget] = useState<HTMLElement | null>(null);
+
+   useEffect(() => {
       initInspector(setTarget);
    }, []);
-   useEffect(() => {}, [target]);
 
-   if (!target) return null; // ✅ 기본적으로는 아무것도 안 그림
+   if (!target) return null;
 
    return (
-      <div
-         style={{
-            position: "fixed",
-            top: 0,
-            right: 0,
-            width: "400px",
-            height: "100%",
-            zIndex: 999999,
-         }}
-      >
-         <Panel target={target} />
+      <div>
+         <Popover target={target} onClose={() => setTarget(null)} />
       </div>
    );
-};
+}
 
 root.render(<App />);

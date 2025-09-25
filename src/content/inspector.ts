@@ -1,8 +1,3 @@
-const style = document.createElement("link");
-style.rel = "stylesheet";
-style.href = chrome.runtime.getURL("content.css"); // 또는 assets/content-XYZ.css
-document.head.appendChild(style);
-
 let overlay: HTMLDivElement | null = null;
 
 export function initInspector(setTarget: (el: HTMLElement) => void) {

@@ -1,9 +1,8 @@
-import "../global.css";
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { initInspector } from "./inspector";
 import Popover from "../components/Popover";
-import tailwindCss from "../global.css?inline"; // ✅ string으로 가져옴
+import tailwindCss from "../tailwind.css?inline";
 
 // 1. 호스트 엘리먼트 만들기
 const host = document.createElement("div");

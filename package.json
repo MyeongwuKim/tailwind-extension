@@ -4,14 +4,16 @@
    "version": "0.0.0",
    "type": "module",
    "scripts": {
+      "dev:css:once": "tailwindcss -i ./src/global.css -o ./src/tailwind.css",
+      "dev:css": "tailwindcss -i ./src/global.css -o ./src/tailwind.css --watch",
       "dev:main": "vite build --config vite.config.ts --watch",
       "dev:content": "vite build --config vite.content.config.ts --watch",
-      "dev": "npm-run-all --parallel dev:*",
+      "dev": "npm run dev:css:once && npm-run-all --parallel dev:css dev:main dev:content",
+      "build:css": "tailwindcss -i ./src/global.css -o ./src/tailwind.css --minify",
       "build:main": "vite build --config vite.config.ts",
       "build:content": "vite build --config vite.content.config.ts",
-      "build": "npm run build:main && npm run build:content",
-      "lint": "eslint .",
-      "preview": "vite preview"
+      "build": "npm run build:css && npm run build:main && npm run build:content",
+      "lint": "eslint ."
    },
    "dependencies": {
       "postcss-safe-parser": "^7.0.1",

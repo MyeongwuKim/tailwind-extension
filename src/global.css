@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:host {
    --color-background1: #fff;
    --color-text1: #212529;
    --color-text2: #495057;
@@ -11,7 +11,7 @@
    --color-border1: #dee2e6;
 }
 
-.dark {
+:host(.dark) {
    --color-background1: #374151;
    --color-text1: #ececec;
    --color-text2: #d9d9d9;

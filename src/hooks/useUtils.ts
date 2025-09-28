@@ -1,51 +1,3 @@
-const cssToTailwindMap: Record<string, (value: string) => string | null> = {
-   "background-color": (val) => `bg-[${val}]`,
-   color: (val) => `text-[${val}]`,
-   "border-radius": (val) => {
-      if (val === "4px") return "rounded";
-      if (val === "8px") return "rounded-md";
-      if (val === "16px") return "rounded-xl";
-      return `rounded-[${val}]`;
-   },
-   "border-width": (val) => (val === "1px" ? "border" : `border-[${val}]`),
-   "border-color": (val) => `border-[${val}]`,
-   height: (val) => (val === "32px" ? "h-8" : `h-[${val}]`),
-   width: (val) => (val === "32px" ? "w-8" : `w-[${val}]`),
-   "font-size": (val) => {
-      if (val === "16px") return "text-base";
-      if (val === "14px") return "text-sm";
-      return `text-[${val}]`;
-   },
-   padding: (val) => {
-      if (val === "16px") return "p-4";
-      return `p-[${val}]`;
-   },
-   margin: (val) => {
-      if (val === "16px") return "m-4";
-      return `m-[${val}]`;
-   },
-};
-
-type CSSObject = Record<string, string>;
-
-export function convertCssObjToTailwind(cssObj: CSSObject): Record<string, string> {
-   const result: Record<string, string> = {};
-
-   for (const [prop, val] of Object.entries(cssObj)) {
-      const normalizedProp = prop.replace(/[A-Z]/g, (m) => "-" + m.toLowerCase()); // camelCase → kebab-case
-      const converter = cssToTailwindMap[normalizedProp];
-
-      if (converter) {
-         const tw = converter(val);
-         if (tw) result[normalizedProp] = tw;
-      } else {
-         result[normalizedProp] = `[${normalizedProp}:${val}]`; // fallback
-      }
-   }
-
-   return result;
-}
-
 export function getClassAppliedStyles(el: HTMLElement) {
    const computed = getComputedStyle(el);
 
@@ -57,10 +9,9 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
    const result: Record<string, string | string[]> = {};
    const allowedProps = [
+      "position",
       "color",
       "background-color",
-      "border-color",
-      "border-width",
       "width",
       "height",
       "margin",
@@ -86,6 +37,7 @@ export function getClassAppliedStyles(el: HTMLElement) {
       "box-shadow",
    ];
 
+   // 일반 속성 필터링
    for (let i = 0; i < computed.length; i++) {
       const prop = computed.item(i);
       if (!prop) continue;
@@ -93,14 +45,14 @@ export function getClassAppliedStyles(el: HTMLElement) {
       // 인라인 스타일 제외
       if (el.style[prop as any]) continue;
 
-      // border-radius는 별도 처리
+      // border-radius 개별 속성은 따로 처리
       if (
          prop === "border-top-left-radius" ||
          prop === "border-top-right-radius" ||
          prop === "border-bottom-right-radius" ||
          prop === "border-bottom-left-radius"
       ) {
-         continue; // 개별 값은 아래에서 처리
+         continue;
       }
 
       if (!allowedProps.includes(prop as any)) continue;
@@ -112,6 +64,7 @@ export function getClassAppliedStyles(el: HTMLElement) {
       result[prop] = value;
    }
 
+   // ✅ border-radius 처리
    const tl = computed.getPropertyValue("border-top-left-radius");
    const tr = computed.getPropertyValue("border-top-right-radius");
    const br = computed.getPropertyValue("border-bottom-right-radius");
@@ -124,7 +77,7 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
    if (tl !== dtl || tr !== dtr || br !== dbr || bl !== dbl) {
       if (tl === tr && tr === br && br === bl) {
-         result["border-radius"] = `rounded-[${tl}]`;
+         result["border-radius"] = tl;
       } else {
          const radiusClasses: string[] = [];
          if (tl !== dtl) radiusClasses.push(`rounded-tl-[${tl}]`);
@@ -132,6 +85,84 @@ export function getClassAppliedStyles(el: HTMLElement) {
          if (br !== dbr) radiusClasses.push(`rounded-br-[${br}]`);
          if (bl !== dbl) radiusClasses.push(`rounded-bl-[${bl}]`);
          if (radiusClasses.length) result["border-radius"] = radiusClasses;
+      }
+   }
+
+   // ✅ border-width 처리
+   const bwTop = computed.getPropertyValue("border-top-width");
+   const bwRight = computed.getPropertyValue("border-right-width");
+   const bwBottom = computed.getPropertyValue("border-bottom-width");
+   const bwLeft = computed.getPropertyValue("border-left-width");
+
+   if (
+      bwTop !== defaultStyles.getPropertyValue("border-top-width") ||
+      bwRight !== defaultStyles.getPropertyValue("border-right-width") ||
+      bwBottom !== defaultStyles.getPropertyValue("border-bottom-width") ||
+      bwLeft !== defaultStyles.getPropertyValue("border-left-width")
+   ) {
+      if (bwTop === bwRight && bwRight === bwBottom && bwBottom === bwLeft) {
+         result["border-width"] = bwTop;
+      } else {
+         if (bwTop !== defaultStyles.getPropertyValue("border-top-width"))
+            result["border-top-width"] = bwTop;
+         if (bwRight !== defaultStyles.getPropertyValue("border-right-width"))
+            result["border-right-width"] = bwRight;
+         if (bwBottom !== defaultStyles.getPropertyValue("border-bottom-width"))
+            result["border-bottom-width"] = bwBottom;
+         if (bwLeft !== defaultStyles.getPropertyValue("border-left-width"))
+            result["border-left-width"] = bwLeft;
+      }
+   }
+
+   // ✅ border-color 처리
+   const bcTop = computed.getPropertyValue("border-top-color");
+   const bcRight = computed.getPropertyValue("border-right-color");
+   const bcBottom = computed.getPropertyValue("border-bottom-color");
+   const bcLeft = computed.getPropertyValue("border-left-color");
+
+   if (
+      bcTop !== defaultStyles.getPropertyValue("border-top-color") ||
+      bcRight !== defaultStyles.getPropertyValue("border-right-color") ||
+      bcBottom !== defaultStyles.getPropertyValue("border-bottom-color") ||
+      bcLeft !== defaultStyles.getPropertyValue("border-left-color")
+   ) {
+      if (bcTop === bcRight && bcRight === bcBottom && bcBottom === bcLeft) {
+         result["border-color"] = bcTop;
+      } else {
+         if (bcTop !== defaultStyles.getPropertyValue("border-top-color"))
+            result["border-top-color"] = bcTop;
+         if (bcRight !== defaultStyles.getPropertyValue("border-right-color"))
+            result["border-right-color"] = bcRight;
+         if (bcBottom !== defaultStyles.getPropertyValue("border-bottom-color"))
+            result["border-bottom-color"] = bcBottom;
+         if (bcLeft !== defaultStyles.getPropertyValue("border-left-color"))
+            result["border-left-color"] = bcLeft;
+      }
+   }
+
+   // ✅ border-style 처리
+   const bsTop = computed.getPropertyValue("border-top-style");
+   const bsRight = computed.getPropertyValue("border-right-style");
+   const bsBottom = computed.getPropertyValue("border-bottom-style");
+   const bsLeft = computed.getPropertyValue("border-left-style");
+
+   if (
+      bsTop !== defaultStyles.getPropertyValue("border-top-style") ||
+      bsRight !== defaultStyles.getPropertyValue("border-right-style") ||
+      bsBottom !== defaultStyles.getPropertyValue("border-bottom-style") ||
+      bsLeft !== defaultStyles.getPropertyValue("border-left-style")
+   ) {
+      if (bsTop === bsRight && bsRight === bsBottom && bsBottom === bsLeft) {
+         result["border-style"] = bsTop;
+      } else {
+         if (bsTop !== defaultStyles.getPropertyValue("border-top-style"))
+            result["border-top-style"] = bsTop;
+         if (bsRight !== defaultStyles.getPropertyValue("border-right-style"))
+            result["border-right-style"] = bsRight;
+         if (bsBottom !== defaultStyles.getPropertyValue("border-bottom-style"))
+            result["border-bottom-style"] = bsBottom;
+         if (bsLeft !== defaultStyles.getPropertyValue("border-left-style"))
+            result["border-left-style"] = bsLeft;
       }
    }
 

@@ -1,4 +1,6 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { getClassAppliedStyles } from "../hooks/useUtils";
+import { cssToTailwind } from "../hooks/useConverter";
 
 export default function Popover({ target, onClose }: { target: HTMLElement; onClose: () => void }) {
    const popoverRef = useRef<HTMLDivElement>(null);
@@ -46,10 +48,19 @@ export default function Popover({ target, onClose }: { target: HTMLElement; onCl
             onClose();
          }
       };
+
       document.addEventListener("mousedown", handleClickOutside);
       return () => document.removeEventListener("mousedown", handleClickOutside);
    }, [target]);
 
+   const tailwindStyles = useMemo(() => {
+      if (!target) return [];
+      const styleObj = getClassAppliedStyles(target);
+      return Object.entries(styleObj)
+         .map(([k, v]) => cssToTailwind(k, v as string))
+         .filter(Boolean) as string[];
+   }, [target]);
+   console.log(tailwindStyles);
    return (
       <div
          onMouseDown={(e) => e.stopPropagation()} // 👈 추가
@@ -66,7 +77,11 @@ export default function Popover({ target, onClose }: { target: HTMLElement; onCl
             {`<${target.tagName.toLowerCase()}>`} Element
          </h2>
          <div className="border-border1 border-b-2 w-full my-4"></div>
-         <div className="text-text2">gdgdgdgdg</div>
+         <div className="text-text2 flex gap-2 flex-wrap">
+            {tailwindStyles.map((prop) => (
+               <span>{prop}</span>
+            ))}
+         </div>
       </div>
    );
 }

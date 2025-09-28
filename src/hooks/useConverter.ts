@@ -131,6 +131,36 @@ export function cssToTailwind(prop: string, value: string): string | null {
    if (prop === "box-shadow") return `shadow-[${value}]`;
    if (prop === "opacity") return `opacity-[${value}]`;
 
+   // ----- Borders -----
+   if (prop === "border-width") {
+      if (value === "1px") return "border";
+      if (value === "2px") return "border-2";
+      if (value === "4px") return "border-4";
+      if (value === "8px") return "border-8";
+      return `border-[${value}]`;
+   }
+   if (prop === "border-color") return `border-[${value}]`;
+   if (prop === "border-style") {
+      switch (value) {
+         case "solid":
+            return "border-solid";
+         case "dashed":
+            return "border-dashed";
+         case "dotted":
+            return "border-dotted";
+         case "double":
+            return "border-double";
+         case "none":
+            return "border-none";
+         default:
+            return `border-[${value}]`;
+      }
+   }
+   if (prop.includes("radius")) {
+      const key = closest(parseFloat(value), radiusMap);
+      return key ? `rounded-${key}` : `rounded-[${value}]`;
+   }
+
    // ----- Layout -----
    if (prop === "display") {
       if (value === "flex") return "flex";

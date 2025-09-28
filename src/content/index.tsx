@@ -23,7 +23,7 @@ shadow.appendChild(shadowContainer);
 // 5. React Root 연결
 const root = createRoot(shadowContainer);
 
-function App() {
+export default function App() {
    const [target, setTarget] = useState<HTMLElement | null>(null);
 
    useEffect(() => {

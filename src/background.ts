@@ -15,6 +15,8 @@ chrome.runtime.onMessage.addListener((msg) => {
          // ✅ 메뉴 제거
          chrome.contextMenus.removeAll();
       }
+   } else if (msg.action == "log") {
+      console.log(msg.payload);
    }
 });
 

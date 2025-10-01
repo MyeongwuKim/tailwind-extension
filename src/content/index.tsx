@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { initInspector } from "./inspector";
 import Popover from "../components/Popover";
 import tailwindCss from "../tailwind.css?inline";
-
+import { injectFonts } from "./fontLoader";
 // 1. 호스트 엘리먼트 만들기
 const host = document.createElement("div");
 host.id = "tw-panel-root";
@@ -11,6 +11,8 @@ document.body.appendChild(host);
 
 // 2. Shadow Root 붙이기
 const shadow = host.attachShadow({ mode: "open" });
+
+injectFonts();
 
 const styleEl = document.createElement("style");
 styleEl.textContent = tailwindCss;
@@ -33,8 +35,13 @@ export default function App() {
    if (!target) return null;
 
    return (
-      <div>
-         <Popover target={target} onClose={() => setTarget(null)} />
+      <div className="font-inter">
+         <Popover
+            target={target}
+            onClose={() => {
+               setTarget(null);
+            }}
+         />
       </div>
    );
 }

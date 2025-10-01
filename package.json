@@ -16,6 +16,8 @@
       "lint": "eslint ."
    },
    "dependencies": {
+      "@fontsource/inter": "^5.2.8",
+      "@heroicons/react": "^2.2.0",
       "postcss-safe-parser": "^7.0.1",
       "react": "^19.1.1",
       "react-dom": "^19.1.1"

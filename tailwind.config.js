@@ -2,6 +2,9 @@ export default {
    content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
    theme: {
       extend: {
+         fontFamily: {
+            inter: ["Inter"],
+         },
          colors: {
             background1: "var(--color-background1)",
             text1: "var(--color-text1)",
@@ -12,5 +15,4 @@ export default {
          },
       },
    },
-   plugins: [],
 };

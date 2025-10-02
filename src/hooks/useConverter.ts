@@ -58,17 +58,48 @@ function buildRadiusMap() {
    }
    return map;
 }
+
+function normalizeShadow(value: string): string {
+   return (
+      value
+         .trim()
+         // 색상 함수 안까지 전부 언더스코어 통일
+         .replace(/(rgba?\([^)]+\)|hsla?\([^)]+\))/g, (match) => match.replace(/[,\s]+/g, "_"))
+         // 남은 오프셋/블러 값들도 언더스코어 처리
+         .replace(/\s+/g, "_")
+   );
+}
+
+function buildShadowMap() {
+   const shadows = fullConfig.theme.boxShadow;
+   const map: Record<string, string> = {};
+
+   for (const [key, val] of Object.entries(shadows)) {
+      const clean = normalizeShadow(val as string);
+      if (key === "DEFAULT") {
+         map[clean] = "shadow";
+      } else {
+         map[clean] = `shadow-${key}`;
+      }
+   }
+
+   return map;
+}
+
 const spacingMap = buildSpacingMap();
 const fontSizeMap = buildFontSizeMap();
 const radiusMap = buildRadiusMap();
+const shadowMap = buildShadowMap();
 
 function convertSingleProp(prop: string, value: string): string | null {
    // ----- shadow -----
    if (prop === "box-shadow") {
-      const clean = normalizeColor(value);
-      return `shadow-[${clean}]`;
+      const clean = normalizeShadow(value);
+      if (shadowMap[clean]) {
+         return shadowMap[clean]; // Tailwind 기본 shadow 프리셋
+      }
+      return `shadow-[${clean}]`; // fallback → arbitrary shadow
    }
-
    // ----- Spacing -----
    if (prop.startsWith("margin")) {
       if (isZero(value)) return null;
@@ -93,6 +124,16 @@ function convertSingleProp(prop: string, value: string): string | null {
    }
 
    // ----- Typography -----
+   if (prop === "text-decoration") {
+      switch (value) {
+         case "underline":
+            return "underline";
+         case "line-through":
+            return "line-through";
+         case "none":
+            return "no-underline";
+      }
+   }
    if (prop === "font-size") {
       const key = closest(parseFloat(value), fontSizeMap);
       return key ? `text-${key}` : `text-[${value}]`;
@@ -118,23 +159,71 @@ function convertSingleProp(prop: string, value: string): string | null {
    if (prop === "background-color") return `bg-[${normalizeColor(value)}]`;
 
    // ----- Borders -----
+   // ----- Borders -----
    if (prop === "border-width") {
       if (isZero(value)) return "border-0";
       if (value === "1px") return "border";
       if (value === "2px") return "border-2";
       return `border-[${value}]`;
    }
-   if (prop === "border-color") return `border-[${normalizeColor(value)}]`;
+
+   if (prop === "border-color") {
+      return `border-[${normalizeColor(value)}]`;
+   }
+
    if (prop === "border-style") {
       switch (value) {
          case "solid":
             return "border-solid";
+         case "dashed":
+            return "border-dashed";
+         case "dotted":
+            return "border-dotted";
          case "none":
             return "border-none";
          default:
             return `border-[${value}]`;
       }
    }
+
+   // ----- Border Sides (width) -----
+   if (prop === "border-top-width") {
+      if (isZero(value)) return null;
+      if (value === "1px") return "border-t";
+      if (value === "2px") return "border-t-2";
+      return `border-t-[${value}]`;
+   }
+   if (prop === "border-right-width") {
+      if (isZero(value)) return null;
+      if (value === "1px") return "border-r";
+      if (value === "2px") return "border-r-2";
+      return `border-r-[${value}]`;
+   }
+   if (prop === "border-bottom-width") {
+      if (isZero(value)) return null;
+      if (value === "1px") return "border-b";
+      if (value === "2px") return "border-b-2";
+      return `border-b-[${value}]`;
+   }
+   if (prop === "border-left-width") {
+      if (isZero(value)) return null;
+      if (value === "1px") return "border-l";
+      if (value === "2px") return "border-l-2";
+      return `border-l-[${value}]`;
+   }
+
+   // ----- Border Sides (color) -----
+   if (prop === "border-top-color") return `border-t-[${normalizeColor(value)}]`;
+   if (prop === "border-right-color") return `border-r-[${normalizeColor(value)}]`;
+   if (prop === "border-bottom-color") return `border-b-[${normalizeColor(value)}]`;
+   if (prop === "border-left-color") return `border-l-[${normalizeColor(value)}]`;
+
+   // ----- Border Sides (style) -----
+   if (prop === "border-top-style") return `border-t-${value}`;
+   if (prop === "border-right-style") return `border-r-${value}`;
+   if (prop === "border-bottom-style") return `border-b-${value}`;
+   if (prop === "border-left-style") return `border-l-${value}`;
+
    if (prop.includes("radius")) {
       const key = closest(parseFloat(value), radiusMap);
 
@@ -165,6 +254,41 @@ function convertSingleProp(prop: string, value: string): string | null {
    }
    if (prop === "align-items") {
       if (value === "center") return "items-center";
+   }
+
+   // ----- Sizing -----
+   if (prop === "width") {
+      if (isZero(value)) return "w-0";
+      if (value === "100%") return "w-full";
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `w-${key}` : `w-[${value}]`;
+   }
+
+   if (prop === "min-width") {
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `min-w-${key}` : `min-w-[${value}]`;
+   }
+
+   if (prop === "max-width") {
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `max-w-${key}` : `max-w-[${value}]`;
+   }
+
+   if (prop === "height") {
+      if (isZero(value)) return "h-0";
+      if (value === "100%") return "h-full";
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `h-${key}` : `h-[${value}]`;
+   }
+
+   if (prop === "min-height") {
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `min-h-${key}` : `min-h-[${value}]`;
+   }
+
+   if (prop === "max-height") {
+      const key = closest(parseFloat(value), spacingMap);
+      return key ? `max-h-${key}` : `max-h-[${value}]`;
    }
 
    return `${prop}-[${value}]`;
@@ -271,9 +395,11 @@ export function getClassAppliedStyles(el: HTMLElement) {
       "letter-spacing",
       "box-shadow",
       "text-overflow",
+      "text-decoration",
+      "border-radius", // 모서리 radius
    ];
 
-   // ✅ allowedProps만 추출
+   // ✅ 기본 allowedProps만 먼저 추출
    for (const prop of allowedProps) {
       const value = computed.getPropertyValue(prop);
       if (
@@ -297,7 +423,11 @@ export function getClassAppliedStyles(el: HTMLElement) {
       result["border-radius"] = tl;
    }
 
-   // ✅ border-width
+   // ============================
+   // ✅ Border 처리
+   // ============================
+
+   // border-width
    const bwTop = computed.getPropertyValue("border-top-width");
    const bwRight = computed.getPropertyValue("border-right-width");
    const bwBottom = computed.getPropertyValue("border-bottom-width");
@@ -305,9 +435,14 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
    if (bwTop === bwRight && bwRight === bwBottom && bwBottom === bwLeft) {
       if (!isZero(bwTop)) result["border-width"] = bwTop;
+   } else {
+      if (!isZero(bwTop)) result["border-top-width"] = bwTop;
+      if (!isZero(bwRight)) result["border-right-width"] = bwRight;
+      if (!isZero(bwBottom)) result["border-bottom-width"] = bwBottom;
+      if (!isZero(bwLeft)) result["border-left-width"] = bwLeft;
    }
 
-   // ✅ border-color
+   // border-color
    const bcTop = computed.getPropertyValue("border-top-color");
    const bcRight = computed.getPropertyValue("border-right-color");
    const bcBottom = computed.getPropertyValue("border-bottom-color");
@@ -315,9 +450,14 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
    if (bcTop === bcRight && bcRight === bcBottom && bcBottom === bcLeft) {
       result["border-color"] = bcTop;
+   } else {
+      result["border-top-color"] = bcTop;
+      result["border-right-color"] = bcRight;
+      result["border-bottom-color"] = bcBottom;
+      result["border-left-color"] = bcLeft;
    }
 
-   // ✅ border-style
+   // border-style
    const bsTop = computed.getPropertyValue("border-top-style");
    const bsRight = computed.getPropertyValue("border-right-style");
    const bsBottom = computed.getPropertyValue("border-bottom-style");
@@ -325,6 +465,11 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
    if (bsTop === bsRight && bsRight === bsBottom && bsBottom === bsLeft) {
       result["border-style"] = bsTop;
+   } else {
+      result["border-top-style"] = bsTop;
+      result["border-right-style"] = bsRight;
+      result["border-bottom-style"] = bsBottom;
+      result["border-left-style"] = bsLeft;
    }
 
    return result;
@@ -332,24 +477,34 @@ export function getClassAppliedStyles(el: HTMLElement) {
 
 const CATEGORY_RULES: Record<Category, RegExp[]> = {
    Typography: [
-      /^text-(xs|sm|base|lg|xl|\d|\[)/, // 글자 크기
-      /^leading-/,
+      /^text-(xs|sm|base|lg|xl|\d+)$/, // 글자 크기
+      /^leading-/, // line-height
       /^truncate$/,
-      /^text-(left|center|right|justify)/,
-      /^font-/,
-      /^tracking-/,
       /^whitespace-/,
       /^list-/,
+      /^text-(left|center|right|justify|start|end)$/, // 정렬
+      /^font-/,
+      /^tracking-/, // 폰트/자간
+      /^underline$/,
+      /^line-through$/,
+      /^no-underline$/,
+      /^overline$/, // 데코
+      /^italic$/,
+      /^not-italic$/, // 이탤릭
    ],
    Color: [
-      /^text-\[/,
+      /^text-\[/, // text-[rgb(...)] 같은 arbitrary 색상
       /^text-(red|blue|green|gray|yellow|purple|pink|indigo|emerald|teal|orange|stone|neutral|zinc|slate|lime|amber|cyan|fuchsia|rose)-/,
       /^bg-/,
       /^border-/,
       /^divide-/,
       /^from-/,
       /^to-/,
-      /^via-/,
+      /^via-/, // gradient
+      /^accent-/,
+      /^caret-/,
+      /^decoration-/,
+      /^outline-/,
    ],
    "Box Model": [
       /^m[trblxy]?/,
@@ -358,6 +513,12 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^h-/,
       /^max-/,
       /^min-/, // sizing
+      /^inset-/,
+      /^top-/,
+      /^right-/,
+      /^bottom-/,
+      /^left-/, // position sizing
+      /^aspect-/, // aspect-ratio
       /^border/,
       /^rounded/, // border, radius
    ],
@@ -366,11 +527,11 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^grid$/,
       /^inline/,
       /^block$/,
-      /^hidden$/,
+      /^hidden$/, // display
       /^absolute$/,
       /^relative$/,
       /^fixed$/,
-      /^sticky$/,
+      /^sticky$/, // position
       /^justify-/,
       /^items-/,
       /^content-/,
@@ -378,25 +539,48 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^gap-/,
       /^col-/,
       /^row-/,
+      /^order-/,
+      /^z-/,
+      /^overflow-/,
+      /^overscroll-/,
+      /^isolate$/,
+      /^isolation-/,
    ],
    Effects: [
       /^shadow-/,
+      /^drop-shadow/, // shadow
+      /^ring-/,
+      /^ring-offset-/, // focus ring
       /^opacity-/,
       /^blur-/,
       /^brightness-/,
       /^contrast-/,
-      /^drop-shadow/,
+      /^grayscale-/,
+      /^hue-rotate-/,
+      /^invert-/,
+      /^saturate-/,
+      /^sepia-/, // filters
       /^backdrop-/,
+      /^filter$/,
+      /^backdrop-filter$/, // backdrop filter
       /^transition/,
       /^duration-/,
-      /^ease-/,
+      /^ease-/, // transition
       /^transform$/,
       /^scale-/,
       /^rotate-/,
       /^translate-/,
+      /^skew-/, // transform
    ],
-   Other: [],
+   Other: [
+      /^cursor-/,
+      /^select-/,
+      /^pointer-events-/, // 인터랙션
+      /^sr-only$/,
+      /^not-sr-only$/, // 접근성
+   ],
 };
+
 export function categorizeClasses(className: string): ClassCategoryMap {
    const result: ClassCategoryMap = {
       Typography: [],
@@ -411,39 +595,24 @@ export function categorizeClasses(className: string): ClassCategoryMap {
    function cleanDoubleBrackets(input: string) {
       return input.replace(/\[\[+/g, "[").replace(/\]\]+/g, "]");
    }
-   // rgb/hsl normalization
+
+   // rgb/hsl → Tailwind 규칙에 맞춰 공백/쉼표를 언더스코어로 치환
    function normalizeRgbHsl(input: string) {
       return input.replace(
          /\[(rgb|hsl)\(([^)]+)\)\]/g,
          (_, fn, inner) => `[${fn}(${inner.replace(/[\s,]+/g, "_")})]`
       );
    }
-   // [ ... ] 안은 공백 유지
-   function safeSplit(className: string): string[] {
+
+   // [ ... ] 안은 그대로 두고 split
+   function safeSplit(input: string): string[] {
       const regex = /\[[^\]]*\]|\S+/g;
-      return className.match(regex) || [];
+      return input.match(regex) || [];
    }
 
-   // 1차 정리
-   let cleaned = cleanDoubleBrackets(className);
-   cleaned = normalizeRgbHsl(cleaned);
-   const classes = safeSplit(cleaned);
-
-   // ✅ 0 관련 클래스 제거
-   const filtered = classes.filter((cls) => {
-      return !/^m[trblxy]?-0$/.test(cls) && !/^p[trblxy]?-0$/.test(cls);
-   });
-
-   // ✅ margin/padding 축약 최적화
+   // spacing 최적화 (px, py, mx, my)
    function optimizeSpacing(list: string[]): string[] {
       const set = new Set(list);
-
-      // ✅ 0 값 전부 제거 (m-0, p-0, mt-0, etc)
-      for (const cls of [...set]) {
-         if (/^(m|p)[trblxy]?-(0|\[0(px|rem)?\])$/.test(cls)) {
-            set.delete(cls);
-         }
-      }
 
       // ✅ px (pl + pr)
       for (const cls of [...set]) {
@@ -500,6 +669,17 @@ export function categorizeClasses(className: string): ClassCategoryMap {
       return [...set];
    }
 
+   // 1차 정리
+   let cleaned = cleanDoubleBrackets(className);
+   cleaned = normalizeRgbHsl(cleaned); // ✅ 여기서 underscore 변환 유지
+   const classes = safeSplit(cleaned);
+
+   // ✅ 0 관련 클래스 제거
+   const filtered = classes.filter((cls) => {
+      return !/^m[trblxy]?-0$/.test(cls) && !/^p[trblxy]?-0$/.test(cls);
+   });
+
+   // spacing 축약
    const optimized = optimizeSpacing(filtered);
 
    // ✅ 카테고리 분류

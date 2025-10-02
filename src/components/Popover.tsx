@@ -102,7 +102,6 @@ export default function Popover({ target, onClose }: { target: HTMLElement; onCl
          <h2 className="text-xl font-bold text-text1 line-clamp-2 break-words w-full">
             {targetName}
          </h2>
-
          <div className="border-border1 border-b-2 w-full my-4 relative"></div>
          <div className="gap-4">
             <div id="tailwindClasses-area">
@@ -113,7 +112,30 @@ export default function Popover({ target, onClose }: { target: HTMLElement; onCl
                   <CopyButton textToCopy={tailwindStyles} className="w-32 h-10" />
                </div>
             </div>
-            <div id="typography-area" className="">
+            <div id="category-area" className="gap-2 flex flex-col">
+               {classCategory &&
+                  (Object.keys(classCategory) as (keyof typeof classCategory)[]).map(
+                     (category, i) => {
+                        return (
+                           <div key={i}>
+                              <h3 className="font-medium text-lg text-text1">{category}</h3>
+                              <div className="mt-2 flex gap-2 flex-wrap">
+                                 {classCategory[category].length <= 0 ? (
+                                    <span className="text-base text-gray-500 dark:text-gray-400">
+                                       No Class List
+                                    </span>
+                                 ) : (
+                                    classCategory[category].map((str) => {
+                                       return (
+                                          <ItemButton className="w-auto text-sm">{str}</ItemButton>
+                                       );
+                                    })
+                                 )}
+                              </div>
+                           </div>
+                        );
+                     }
+                  )}
                {/* <h3 className="font-medium text-lg text-text1">Typography</h3>
                <div className="mt-4 flex gap-2 flex-wrap">
                   {typographyStyles.length <= 0 ? (

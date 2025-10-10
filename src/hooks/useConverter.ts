@@ -26,10 +26,19 @@ function isZero(val: string) {
 }
 
 function normalizeColor(val: string) {
-   if (/^(rgb|hsl)/.test(val) || /^#/.test(val)) {
-      return val.trim().replace(/[,\s]+/g, "_"); // ✅ ,와 공백 → _
+   const v = val.trim();
+
+   // ✅ CSS4 함수형 색상 (oklab, oklch, color, rgb, hsl 등)
+   if (/^(rgb|rgba|hsl|hsla|oklab|oklch|color)\(/i.test(v) || /^#/.test(v)) {
+      // 괄호 안의 공백, 쉼표, 슬래시를 언더스코어로 변환
+      return v
+         .replace(/[,\s/]+/g, "_") // 예: oklab(0.7 -0.1 -0.08 / 0.5) → oklab(0.7_-0.1_-0.08_/_0.5)
+         .replace(/\)+_/g, ")_") // ) 뒤 중복 _ 정리
+         .replace(/_+$/g, ""); // 끝의 _ 제거
    }
-   return val.trim();
+
+   // ✅ 일반적인 키워드 색상 (red, transparent, currentcolor 등)
+   return v;
 }
 
 /* ========== Build Maps from Tailwind config ========== */
@@ -60,14 +69,7 @@ function buildRadiusMap() {
 }
 
 function normalizeShadow(value: string): string {
-   return (
-      value
-         .trim()
-         // 색상 함수 안까지 전부 언더스코어 통일
-         .replace(/(rgba?\([^)]+\)|hsla?\([^)]+\))/g, (match) => match.replace(/[,\s]+/g, "_"))
-         // 남은 오프셋/블러 값들도 언더스코어 처리
-         .replace(/\s+/g, "_")
-   );
+   return value.trim().replace(/\s+/g, " ").replace(/, /g, ",");
 }
 
 function buildShadowMap() {
@@ -76,29 +78,61 @@ function buildShadowMap() {
 
    for (const [key, val] of Object.entries(shadows)) {
       const clean = normalizeShadow(val as string);
-      if (key === "DEFAULT") {
-         map[clean] = "shadow";
-      } else {
-         map[clean] = `shadow-${key}`;
-      }
+      map[clean] = key === "DEFAULT" ? "shadow" : `shadow-${key}`;
+   }
+   return map;
+}
+
+const shadowMap = buildShadowMap();
+
+function convertBoxShadow(value: string): string {
+   if (!value) return "";
+
+   // ✅ 여러 쉐도우 중 첫 번째만 사용
+   const parts = value.split(/,(?![^(]*\))/g).map((v) => v.trim());
+   const first = parts.find((v) => !/rgba?\(0,\s*0,\s*0,\s*0\)/.test(v)) || parts[0];
+
+   // ✅ 색상 추출 (모든 CSS4 함수 포함)
+   const colorMatch = first.match(
+      /(rgba?\([^)]+\)|hsla?\([^)]+\)|oklab\([^)]+\)|oklch\([^)]+\)|color\([^)]+\)|#[0-9a-f]{3,8})/i
+   );
+   const color = colorMatch ? colorMatch[1] : null;
+
+   // ✅ 색상 제거 후 offset 부분만 정리
+   const offsetPart = color ? first.replace(color, "").trim() : first.trim();
+
+   // ✅ Tailwind 매핑
+   const clean = normalizeShadow(first);
+   const matchKey = shadowMap[clean]; // 완전 일치 확인
+
+   let shadowSize = "";
+   if (matchKey) {
+      shadowSize = matchKey; // Tailwind 기본값 매칭 성공
+   } else {
+      // offset 값만 브라켓으로 감싸기
+      const offsetClass = offsetPart
+         .replace(/[,\s]+/g, "_")
+         .replace(/\)+_/g, ")_")
+         .replace(/_+$/g, "");
+      shadowSize = `shadow-[${offsetClass}]`;
    }
 
-   return map;
+   // ✅ 색상은 항상 별도 브라켓으로
+   const colorClass = color ? `shadow-[${color.replace(/[,\s]+/g, "_")}]` : "";
+
+   return [shadowSize, colorClass].filter(Boolean).join(" ");
 }
 
 const spacingMap = buildSpacingMap();
 const fontSizeMap = buildFontSizeMap();
 const radiusMap = buildRadiusMap();
-const shadowMap = buildShadowMap();
 
 function convertSingleProp(prop: string, value: string): string | null {
    // ----- shadow -----
    if (prop === "box-shadow") {
       const clean = normalizeShadow(value);
-      if (shadowMap[clean]) {
-         return shadowMap[clean]; // Tailwind 기본 shadow 프리셋
-      }
-      return `shadow-[${clean}]`; // fallback → arbitrary shadow
+      if (shadowMap[clean]) return shadowMap[clean]; // Tailwind config 매칭
+      return convertBoxShadow(value); // 근사치 변환 + 색상 처리
    }
    // ----- Spacing -----
    if (prop.startsWith("margin")) {
@@ -491,16 +525,20 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^overline$/, // 데코
       /^italic$/,
       /^not-italic$/, // 이탤릭
+      /^text-align-\[/,
+      /^line-height-\[/,
+      /^text-overflow-\[/,
    ],
    Color: [
-      /^text-\[/, // text-[rgb(...)] 같은 arbitrary 색상
+      /^text-\[/,
       /^text-(red|blue|green|gray|yellow|purple|pink|indigo|emerald|teal|orange|stone|neutral|zinc|slate|lime|amber|cyan|fuchsia|rose)-/,
       /^bg-/,
-      /^border-/,
+      /^border-\[/, // ✅ border-[rgb(...)]
+      /^border-(red|blue|green|gray|yellow|purple|pink|indigo|emerald|teal|orange|stone|neutral|zinc|slate|lime|amber|cyan|fuchsia|rose)-/, // ✅ border-color
       /^divide-/,
       /^from-/,
       /^to-/,
-      /^via-/, // gradient
+      /^via-/,
       /^accent-/,
       /^caret-/,
       /^decoration-/,
@@ -508,30 +546,38 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
    ],
    "Box Model": [
       /^m[trblxy]?/,
-      /^p[trblxy]?/, // spacing
+      /^p[trblxy]?/,
       /^w-/,
       /^h-/,
       /^max-/,
-      /^min-/, // sizing
+      /^min-/,
       /^inset-/,
       /^top-/,
       /^right-/,
       /^bottom-/,
-      /^left-/, // position sizing
-      /^aspect-/, // aspect-ratio
-      /^border/,
-      /^rounded/, // border, radius
+      /^left-/,
+      /^aspect-/,
+      /^border$/,
+      /^border[trblxy]?-/,
+      /^rounded/,
+      /^border-solid$/,
+      /^border-dashed$/,
+      /^border-dotted$/,
+      /^border-double$/,
+      /^border-none$/,
+      /^border-\d+$/, // 두께
    ],
+
    Layout: [
       /^flex$/,
       /^grid$/,
       /^inline/,
       /^block$/,
-      /^hidden$/, // display
+      /^hidden$/,
       /^absolute$/,
       /^relative$/,
       /^fixed$/,
-      /^sticky$/, // position
+      /^sticky$/,
       /^justify-/,
       /^items-/,
       /^content-/,
@@ -545,12 +591,14 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^overscroll-/,
       /^isolate$/,
       /^isolation-/,
+      // ✅ arbitrary 확장
+      /^flex-direction-\[/,
    ],
    Effects: [
-      /^shadow-/,
-      /^drop-shadow/, // shadow
+      /^shadow(-|\[|$)/,
+      /^drop-shadow/,
       /^ring-/,
-      /^ring-offset-/, // focus ring
+      /^ring-offset-/,
       /^opacity-/,
       /^blur-/,
       /^brightness-/,
@@ -559,19 +607,20 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^hue-rotate-/,
       /^invert-/,
       /^saturate-/,
-      /^sepia-/, // filters
+      /^sepia-/,
       /^backdrop-/,
       /^filter$/,
-      /^backdrop-filter$/, // backdrop filter
+      /^backdrop-filter$/,
       /^transition/,
       /^duration-/,
-      /^ease-/, // transition
+      /^ease-/,
       /^transform$/,
       /^scale-/,
       /^rotate-/,
       /^translate-/,
-      /^skew-/, // transform
+      /^skew-/,
    ],
+
    Other: [
       /^cursor-/,
       /^select-/,
@@ -694,6 +743,6 @@ export function categorizeClasses(className: string): ClassCategoryMap {
       }
       if (!matched) result.Other.push(cls);
    }
-
+   console.log(result);
    return result;
 }

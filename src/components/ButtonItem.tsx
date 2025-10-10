@@ -24,13 +24,17 @@ const cssColorNames = new Set([
 function normalizeColor(value: string): string {
    return value.replace(/_/g, " ");
 }
-
 function isCssColor(value: string): boolean {
    const v = value.toLowerCase();
+
    return (
-      v.includes("rgb") || // rgb(), rgba(), rgb(...) 다 포함
+      v.startsWith("#") || // hex 색상
+      v.includes("rgb") || // rgb(), rgba()
       v.includes("hsl") || // hsl(), hsla()
-      v.startsWith("#") // hex 색상
+      v.includes("oklab") || // ✅ CSS4: oklab()
+      v.includes("oklch") || // ✅ CSS4: oklch()
+      v.includes("color(") || // ✅ color(display-p3 ...), color-mix 등
+      cssColorNames.has(v) // ✅ CSS 색상 키워드 (white, black, transparent 등)
    );
 }
 
@@ -43,8 +47,16 @@ export default function ItemButton({ children, className = "" }: ItemButtonProps
    const [copied, setCopied] = useState(false);
    const text = typeof children === "string" ? children : "";
 
+   // text-[...] 패턴 잡아내기
+   const match =
+      text.match(/(?:text|bg|border|shadow)-\[(.+?)\]/) ||
+      text.match(/(oklab\(.*?\)|oklch\(.*?\)|rgb\(.*?\)|hsl\(.*?\)|#[0-9a-f]{3,8})/i);
+   const colorValue = match ? match[1] : text;
+   const isColor = isCssColor(colorValue);
+
    const handleCopy = async () => {
       if (!text) return;
+      console.log(colorValue);
       try {
          await navigator.clipboard.writeText(text);
          setCopied(true);
@@ -53,11 +65,6 @@ export default function ItemButton({ children, className = "" }: ItemButtonProps
          console.error("복사 실패:", err);
       }
    };
-
-   // text-[...] 패턴 잡아내기
-   const match = text.match(/(?:text|bg|border)-\[(.+?)\]/);
-   const colorValue = match ? match[1] : text;
-   const isColor = isCssColor(colorValue);
 
    return (
       <button

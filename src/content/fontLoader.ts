@@ -1,4 +1,4 @@
-export function injectFonts() {
+export function injectFonts(targetDoc: Document = document) {
    const fontFaces = [
       {
          weight: 400,
@@ -14,20 +14,22 @@ export function injectFonts() {
       },
    ];
 
+   // ✅ 모든 @font-face 규칙을 하나의 문자열로 결합
    let css = "";
    for (const { weight, url } of fontFaces) {
       css += `
-        @font-face {
-          font-family: 'Inter';
-          font-style: normal;
-          font-weight: ${weight};
-          font-display: swap;
-          src: url("${url}") format("woff2");
-        }
-      `;
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: ${weight};
+        font-display: swap;
+        src: url("${url}") format("woff2");
+      }
+    `;
    }
 
-   const style = document.createElement("style");
+   // ✅ <style> 엘리먼트 생성 후 targetDoc (document or iframeDoc)에 삽입
+   const style = targetDoc.createElement("style");
    style.textContent = css;
-   document.head.appendChild(style);
+   targetDoc.head.appendChild(style);
 }

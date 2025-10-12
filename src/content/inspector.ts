@@ -1,117 +1,152 @@
+import { logger } from "../hooks/useUtils";
+
 let overlay: HTMLDivElement | null = null;
+let label: HTMLDivElement | null = null; // 👈 tagname 표시용 라벨 추가
 let blocker: HTMLDivElement | null = null;
 
 export function initInspector(setTarget: (el: HTMLElement) => void) {
+   logger("initInspector");
+
+   // 🔸 이미 실행 중이면 중복 방지
+   if (blocker) {
+      logger("inspector already active");
+      return;
+   }
+
+   // ================= stop =================
    function stopInspector() {
-      if (blocker) {
-         blocker.remove();
-         blocker = null;
-      }
-      if (overlay) {
-         overlay.remove();
-         overlay = null;
-      }
+      blocker?.remove();
+      blocker = null;
+      overlay?.remove();
+      overlay = null;
+      label?.remove();
+      label = null;
+
       document.removeEventListener("mousemove", handleMove, true);
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown, true);
-      console.log("[inspector] stopped");
+      logger("[inspector] stopped");
    }
 
+   // ================= handlers =================
    function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") stopInspector();
    }
 
-   // 클릭 처리: elementsFromPoint로 실제 밑의 엘리먼트 찾아 선택
    function handleClick(e: MouseEvent) {
       e.preventDefault();
       e.stopPropagation();
 
       const candidates = document.elementsFromPoint(e.clientX, e.clientY);
-      if (!candidates || candidates.length === 0) {
-         console.log("[inspector] click: no candidates");
-         stopInspector();
-         return;
-      }
+      const el = candidates.find((n) => n !== blocker && n !== overlay && n !== label) as
+         | HTMLElement
+         | undefined;
 
-      // blocker/overlay 제외한 첫 유효 요소 찾기
-      const el = candidates.find((n) => n !== blocker && n !== overlay) as HTMLElement | undefined;
       if (el) {
-         console.log("[inspector] clicked element:", el.tagName, el);
+         logger("[inspector] clicked element:", el.tagName);
          setTarget(el);
-      } else {
-         console.log("[inspector] clicked: no valid element (only blocker/overlay)");
       }
-
       stopInspector();
    }
 
-   // 마우스 이동 처리: elementsFromPoint로 밑 엘리먼트 찾아 overlay 위치 갱신
    function handleMove(e: MouseEvent) {
       const candidates = document.elementsFromPoint(e.clientX, e.clientY);
-      if (!candidates || candidates.length === 0) {
-         if (overlay) overlay.style.display = "none";
-         return;
-      }
+      const el = candidates.find((n) => n !== blocker && n !== overlay && n !== label) as
+         | HTMLElement
+         | undefined;
 
-      const el = candidates.find((n) => n !== blocker && n !== overlay) as HTMLElement | undefined;
       if (!el) {
          if (overlay) overlay.style.display = "none";
+         if (label) label.style.display = "none";
          return;
       }
 
-      // 디버그 로그(원하면 주석 처리)
-      // console.log("[inspector] hover element:", el.tagName, el);
-
       const rect = el.getBoundingClientRect();
-      showOverlay(rect);
+      showOverlay(rect, el);
    }
 
-   function showOverlay(rect: DOMRect) {
+   // ================= overlay =================
+   function showOverlay(rect: DOMRect, el: HTMLElement) {
       if (!overlay) {
          overlay = document.createElement("div");
-         overlay.style.position = "fixed";
-         overlay.style.pointerEvents = "none"; // 하이라이트는 이벤트 통과
-         overlay.style.zIndex = "1000000"; // blocker(999998)보다 위
-         overlay.style.boxSizing = "border-box";
-         overlay.style.transition = "top 0.05s, left 0.05s, width 0.05s, height 0.05s"; // 부드럽게
+         Object.assign(overlay.style, {
+            position: "fixed",
+            pointerEvents: "none",
+            zIndex: "1000000",
+            boxSizing: "border-box",
+            transition: "top 0.05s, left 0.05s, width 0.05s, height 0.05s",
+         });
          document.body.appendChild(overlay);
       }
-      overlay.style.display = "block";
-      overlay.style.top = `${Math.max(0, rect.top)}px`;
-      overlay.style.left = `${Math.max(0, rect.left)}px`;
-      overlay.style.width = `${Math.max(0, rect.width)}px`;
-      overlay.style.height = `${Math.max(0, rect.height)}px`;
-      overlay.style.border = "2px solid magenta";
-      overlay.style.background = "rgba(255,0,255,0.12)";
-      overlay.style.mixBlendMode = "difference";
+
+      // 위치 / 스타일 업데이트
+      Object.assign(overlay.style, {
+         display: "block",
+         top: `${Math.max(0, rect.top)}px`,
+         left: `${Math.max(0, rect.left)}px`,
+         width: `${Math.max(0, rect.width)}px`,
+         height: `${Math.max(0, rect.height)}px`,
+         border: "2px solid magenta",
+         background: "rgba(255,0,255,0.12)",
+         mixBlendMode: "difference",
+      });
+
+      // 라벨
+      if (!label) {
+         label = document.createElement("div");
+         Object.assign(label.style, {
+            position: "fixed",
+            zIndex: "1000001",
+            pointerEvents: "none",
+            fontFamily: "monospace",
+            fontSize: "12px",
+            color: "#fff",
+            background: "rgba(0,0,0,0.75)",
+            padding: "2px 6px",
+            borderRadius: "4px",
+            whiteSpace: "nowrap",
+         });
+         document.body.appendChild(label);
+      }
+
+      const tag = el.tagName.toLowerCase();
+      const siblings = el.parentElement
+         ? Array.from(el.parentElement.children).filter((child) => child.tagName === el.tagName)
+         : [];
+      const index = siblings.indexOf(el);
+      const id = el.id ? `#${el.id}` : `#${index}`;
+      const classes = el.classList.length ? "." + Array.from(el.classList).join(".") : "";
+
+      label.textContent = `${tag}${id}${classes}`;
+
+      const labelHeight = 20;
+      const top = rect.top > labelHeight + 4 ? rect.top - labelHeight - 4 : rect.bottom + 4;
+
+      Object.assign(label.style, {
+         top: `${Math.max(0, top)}px`,
+         left: `${Math.max(0, rect.left)}px`,
+         display: "block",
+      });
    }
 
-   // 메시지로 시작 신호 받기
-   chrome.runtime.onMessage.addListener(function listener(msg) {
-      if (msg?.action !== "startInspector") return;
-
-      // 이미 실행중이면 무시
-      if (blocker) return;
-
-      // 1) blocker 생성 (hover 스타일 차단용)
-      blocker = document.createElement("div");
-      blocker.style.position = "fixed";
-      blocker.style.top = "0";
-      blocker.style.left = "0";
-      blocker.style.width = "100vw";
-      blocker.style.height = "100vh";
-      blocker.style.zIndex = "999998";
-      blocker.style.background = "transparent";
-      blocker.style.cursor = "crosshair";
-      // blocker은 이벤트를 받아야 하므로 pointerEvents auto
-      blocker.style.pointerEvents = "auto";
-      document.body.appendChild(blocker);
-
-      // 2) 이벤트는 document에서 잡기 (capture true)
-      document.addEventListener("mousemove", handleMove, true);
-      document.addEventListener("click", handleClick, true);
-      document.addEventListener("keydown", handleKeyDown, true);
-
-      console.log("[inspector] started");
+   // ================= 실행 즉시 오버레이 시작 =================
+   blocker = document.createElement("div");
+   Object.assign(blocker.style, {
+      position: "fixed",
+      top: "0",
+      left: "0",
+      width: "100vw",
+      height: "100vh",
+      zIndex: "999998",
+      background: "transparent",
+      cursor: "crosshair",
+      pointerEvents: "auto",
    });
+   document.body.appendChild(blocker);
+
+   document.addEventListener("mousemove", handleMove, true);
+   document.addEventListener("click", handleClick, true);
+   document.addEventListener("keydown", handleKeyDown, true);
+
+   logger("[inspector] started");
 }

@@ -13,8 +13,6 @@ export default function CopyButton({ textToCopy, className = "" }: CopyButtonPro
       try {
          await navigator.clipboard.writeText(textToCopy);
          setCopied(true);
-
-         // 2초 후 다시 원래 상태로
          setTimeout(() => setCopied(false), 2000);
       } catch (err) {
          console.error("복사 실패:", err);
@@ -24,20 +22,21 @@ export default function CopyButton({ textToCopy, className = "" }: CopyButtonPro
    return (
       <button
          onClick={handleCopy}
-         className={`flex items-center justify-center text-center font-medium gap-2
-            focus:outline-none focus:ring-4 h-10 px-5 text-lg rounded-lg border 
-           bg-slate-600 text-white hover:bg-slate-700 focus:ring-slate-300
-dark:bg-slate-500 dark:hover:bg-slate-600 dark:focus:ring-slate-800
-        ${className}`}
+         className={`ex-tw-flex ex-tw-items-center ex-tw-justify-center ex-tw-text-center 
+            ex-tw-font-medium ex-tw-gap-2 ex-tw-focus:outline-none ex-tw-focus:ring-4 
+            ex-tw-h-10 ex-tw-px-5 ex-tw-text-lg ex-tw-rounded-lg ex-tw-border 
+            ex-tw-bg-slate-600 ex-tw-text-white hover:ex-tw-bg-slate-700 ex-tw-focus:ring-slate-300
+            dark:ex-tw-bg-slate-500 dark:hover:ex-tw-bg-slate-600 dark:ex-tw-focus:ring-slate-800
+            ${className}`}
       >
          {copied ? (
             <>
-               <CheckIcon className="w-5 h-5 animate-bounce" />
-               <span className="">Copied!</span>
+               <CheckIcon className="ex-tw-w-5 ex-tw-h-5 ex-tw-animate-bounce" />
+               <span>Copied!</span>
             </>
          ) : (
             <>
-               <ClipboardIcon className="w-5 h-5" />
+               <ClipboardIcon className="ex-tw-w-5 ex-tw-h-5" />
                <span>Copy</span>
             </>
          )}

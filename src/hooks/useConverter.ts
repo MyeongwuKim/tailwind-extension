@@ -401,6 +401,7 @@ export function cssToTailwind(styles: Record<string, string>): string {
 
 export function getClassAppliedStyles(el: HTMLElement) {
    const computed = getComputedStyle(el);
+   const defaults = getComputedStyle(document.createElement(el.tagName));
 
    const result: Record<string, string | string[]> = {};
    const allowedProps = [
@@ -419,7 +420,6 @@ export function getClassAppliedStyles(el: HTMLElement) {
       "padding-left",
       "font-size",
       "font-weight",
-      "display",
       "flex-direction",
       "justify-content",
       "align-items",
@@ -430,24 +430,28 @@ export function getClassAppliedStyles(el: HTMLElement) {
       "box-shadow",
       "text-overflow",
       "text-decoration",
-      "border-radius", // 모서리 radius
+      "border-radius",
    ];
 
-   // ✅ 기본 allowedProps만 먼저 추출
+   const isZero = (v: string) => !v || v === "0" || v === "0px" || v === "0rem";
+
+   // ✅ 기본 allowedProps 추출
    for (const prop of allowedProps) {
       const value = computed.getPropertyValue(prop);
+      const defaultVal = defaults.getPropertyValue(prop);
       if (
          value &&
          value.trim() !== "" &&
          value !== "normal" &&
          value !== "auto" &&
-         value !== "none"
+         value !== "none" &&
+         value !== defaultVal
       ) {
          result[prop] = value.trim();
       }
    }
 
-   // ✅ border-radius (개별 값이 전부 같은지 확인 후 하나로 축약)
+   // ✅ border-radius (네 모서리 같으면 하나로 축약)
    const tl = computed.getPropertyValue("border-top-left-radius");
    const tr = computed.getPropertyValue("border-top-right-radius");
    const br = computed.getPropertyValue("border-bottom-right-radius");
@@ -461,49 +465,55 @@ export function getClassAppliedStyles(el: HTMLElement) {
    // ✅ Border 처리
    // ============================
 
-   // border-width
    const bwTop = computed.getPropertyValue("border-top-width");
    const bwRight = computed.getPropertyValue("border-right-width");
    const bwBottom = computed.getPropertyValue("border-bottom-width");
    const bwLeft = computed.getPropertyValue("border-left-width");
 
-   if (bwTop === bwRight && bwRight === bwBottom && bwBottom === bwLeft) {
-      if (!isZero(bwTop)) result["border-width"] = bwTop;
-   } else {
-      if (!isZero(bwTop)) result["border-top-width"] = bwTop;
-      if (!isZero(bwRight)) result["border-right-width"] = bwRight;
-      if (!isZero(bwBottom)) result["border-bottom-width"] = bwBottom;
-      if (!isZero(bwLeft)) result["border-left-width"] = bwLeft;
-   }
-
-   // border-color
-   const bcTop = computed.getPropertyValue("border-top-color");
-   const bcRight = computed.getPropertyValue("border-right-color");
-   const bcBottom = computed.getPropertyValue("border-bottom-color");
-   const bcLeft = computed.getPropertyValue("border-left-color");
-
-   if (bcTop === bcRight && bcRight === bcBottom && bcBottom === bcLeft) {
-      result["border-color"] = bcTop;
-   } else {
-      result["border-top-color"] = bcTop;
-      result["border-right-color"] = bcRight;
-      result["border-bottom-color"] = bcBottom;
-      result["border-left-color"] = bcLeft;
-   }
-
-   // border-style
    const bsTop = computed.getPropertyValue("border-top-style");
    const bsRight = computed.getPropertyValue("border-right-style");
    const bsBottom = computed.getPropertyValue("border-bottom-style");
    const bsLeft = computed.getPropertyValue("border-left-style");
 
-   if (bsTop === bsRight && bsRight === bsBottom && bsBottom === bsLeft) {
-      result["border-style"] = bsTop;
-   } else {
-      result["border-top-style"] = bsTop;
-      result["border-right-style"] = bsRight;
-      result["border-bottom-style"] = bsBottom;
-      result["border-left-style"] = bsLeft;
+   const bcTop = computed.getPropertyValue("border-top-color");
+   const bcRight = computed.getPropertyValue("border-right-color");
+   const bcBottom = computed.getPropertyValue("border-bottom-color");
+   const bcLeft = computed.getPropertyValue("border-left-color");
+
+   const hasBorder =
+      ![bwTop, bwRight, bwBottom, bwLeft].every(isZero) &&
+      ![bsTop, bsRight, bsBottom, bsLeft].every((s) => s === "none");
+
+   if (hasBorder) {
+      // width
+      if (bwTop === bwRight && bwRight === bwBottom && bwBottom === bwLeft) {
+         result["border-width"] = bwTop;
+      } else {
+         if (!isZero(bwTop)) result["border-top-width"] = bwTop;
+         if (!isZero(bwRight)) result["border-right-width"] = bwRight;
+         if (!isZero(bwBottom)) result["border-bottom-width"] = bwBottom;
+         if (!isZero(bwLeft)) result["border-left-width"] = bwLeft;
+      }
+
+      // color
+      if (bcTop === bcRight && bcRight === bcBottom && bcBottom === bcLeft) {
+         result["border-color"] = bcTop;
+      } else {
+         result["border-top-color"] = bcTop;
+         result["border-right-color"] = bcRight;
+         result["border-bottom-color"] = bcBottom;
+         result["border-left-color"] = bcLeft;
+      }
+
+      // style
+      if (bsTop === bsRight && bsRight === bsBottom && bsBottom === bsLeft) {
+         result["border-style"] = bsTop;
+      } else {
+         result["border-top-style"] = bsTop;
+         result["border-right-style"] = bsRight;
+         result["border-bottom-style"] = bsBottom;
+         result["border-left-style"] = bsLeft;
+      }
    }
 
    return result;

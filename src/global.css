@@ -2,20 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
-:host {
+:root {
    --color-background1: #fff;
    --color-text1: #212529;
    --color-text2: #495057;
    --color-text3: #868e96;
    --color-text4: #ced4da;
+   --color-text5: #0cb0d4;
    --color-border1: #dee2e6;
 }
 
-:host(.dark) {
+:root.dark {
    --color-background1: #374151;
    --color-text1: #ececec;
    --color-text2: #d9d9d9;
    --color-text3: #acacac;
    --color-text4: #595959;
+   --color-text5: #4be7fb;
    --color-border1: #4d4d4d;
 }

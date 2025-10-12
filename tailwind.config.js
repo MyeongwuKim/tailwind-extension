@@ -1,4 +1,5 @@
 export default {
+   prefix: "ex-tw-",
    content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
    theme: {
       extend: {
@@ -11,6 +12,7 @@ export default {
             text2: "var(--color-text2)",
             text3: "var(--color-text3)",
             text4: "var(--color-text4)",
+            text5: "var(--color-text5)",
             border1: "var(--color-border1)",
          },
       },

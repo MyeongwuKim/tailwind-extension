@@ -19,12 +19,12 @@ export default function Popup() {
    };
 
    return (
-      <div className="p-4 w-48">
-         <h1 className="font-bold mb-2 ">Tailwind Inspector</h1>
+      <div className="ex-tw-p-4 ex-tw-w-48">
+         <h1 className="ex-tw-font-bold ex-tw-mb-2 ">Tailwind Inspector</h1>
          <button
             onClick={toggle}
-            className={`px-3 py-2 rounded text-white w-full ${
-               enabled ? "bg-green-600" : "bg-gray-500"
+            className={`ex-tw-px-3 ex-tw-py-2 ex-tw-rounded ex-tw-text-white ex-tw-w-full ${
+               enabled ? "ex-tw-bg-green-600" : "ex-tw-bg-gray-500"
             }`}
          >
             {enabled ? "ON" : "OFF"}

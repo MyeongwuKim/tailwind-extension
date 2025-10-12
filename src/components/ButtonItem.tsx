@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 
-// ✅ CSS color keyword 화이트리스트 (필요하면 더 추가 가능)
+// ✅ CSS color keyword 화이트리스트
 const cssColorNames = new Set([
    "black",
    "white",
@@ -28,13 +28,13 @@ function isCssColor(value: string): boolean {
    const v = value.toLowerCase();
 
    return (
-      v.startsWith("#") || // hex 색상
-      v.includes("rgb") || // rgb(), rgba()
-      v.includes("hsl") || // hsl(), hsla()
-      v.includes("oklab") || // ✅ CSS4: oklab()
-      v.includes("oklch") || // ✅ CSS4: oklch()
-      v.includes("color(") || // ✅ color(display-p3 ...), color-mix 등
-      cssColorNames.has(v) // ✅ CSS 색상 키워드 (white, black, transparent 등)
+      v.startsWith("#") ||
+      v.includes("rgb") ||
+      v.includes("hsl") ||
+      v.includes("oklab") ||
+      v.includes("oklch") ||
+      v.includes("color(") ||
+      cssColorNames.has(v)
    );
 }
 
@@ -47,7 +47,6 @@ export default function ItemButton({ children, className = "" }: ItemButtonProps
    const [copied, setCopied] = useState(false);
    const text = typeof children === "string" ? children : "";
 
-   // text-[...] 패턴 잡아내기
    const match =
       text.match(/(?:text|bg|border|shadow)-\[(.+?)\]/) ||
       text.match(/(oklab\(.*?\)|oklch\(.*?\)|rgb\(.*?\)|hsl\(.*?\)|#[0-9a-f]{3,8})/i);
@@ -56,7 +55,6 @@ export default function ItemButton({ children, className = "" }: ItemButtonProps
 
    const handleCopy = async () => {
       if (!text) return;
-      console.log(colorValue);
       try {
          await navigator.clipboard.writeText(text);
          setCopied(true);
@@ -69,32 +67,33 @@ export default function ItemButton({ children, className = "" }: ItemButtonProps
    return (
       <button
          onClick={handleCopy}
-         className={`flex items-center gap-2 border border-gray-300 
-        bg-white text-gray-900 hover:bg-gray-100 focus:ring-gray-100 
-        dark:border-gray-600 dark:bg-gray-800 dark:text-white 
-        dark:hover:border-gray-600 dark:hover:bg-gray-700 dark:focus:ring-gray-700
-        rounded-full px-4 py-2 transition-colors duration-150
-        ${className}`}
+         className={`ex-tw-flex ex-tw-items-center ex-tw-gap-2 ex-tw-border ex-tw-border-gray-300 
+            ex-tw-bg-white ex-tw-text-gray-900 hover:ex-tw-bg-gray-100 focus:ex-tw-ring-gray-100 
+            dark:ex-tw-border-gray-600 dark:ex-tw-bg-gray-800 dark:ex-tw-text-white 
+            dark:hover:ex-tw-border-gray-600 dark:hover:ex-tw-bg-gray-700 dark:focus:ex-tw-ring-gray-700
+            ex-tw-rounded-full ex-tw-px-4 ex-tw-py-2 ex-tw-transition-colors ex-tw-duration-150
+            ${className}`}
       >
          {/* 색상칩 */}
          {isColor && (
             <span
-               className={`inline-block w-3 h-3 rounded-sm border border-gray-400 ${
-                  copied ? "invisible" : ""
+               className={`ex-tw-inline-block ex-tw-w-3 ex-tw-h-3 ex-tw-rounded-sm ex-tw-border ex-tw-border-gray-400 ${
+                  copied ? "ex-tw-invisible" : ""
                }`}
                style={{ backgroundColor: normalizeColor(colorValue) }}
             />
          )}
 
-         <span className="relative inline-block">
+         <span className="ex-tw-relative ex-tw-inline-block">
             {/* 원래 텍스트 */}
-            <span className={copied ? "opacity-0" : "opacity-100"}>{text}</span>
+            <span className={copied ? "ex-tw-opacity-0" : "ex-tw-opacity-100"}>{text}</span>
 
-            {/* Copied! 텍스트 (센터 정렬) */}
+            {/* Copied! 텍스트 */}
             <span
-               className={`absolute inset-0 flex items-center justify-center transition-opacity duration-200 ${
-                  copied ? "opacity-100" : "opacity-0"
-               }`}
+               className={`ex-tw-absolute ex-tw-inset-0 ex-tw-flex ex-tw-items-center ex-tw-justify-center 
+                  ex-tw-transition-opacity ex-tw-duration-200 ${
+                     copied ? "ex-tw-opacity-100" : "ex-tw-opacity-0"
+                  }`}
             >
                Copied!
             </span>

@@ -8,7 +8,12 @@ chrome.runtime.onMessage.addListener((msg) => {
          // ✅ 메뉴 생성 (고정된 ID 사용)
          chrome.contextMenus.create({
             id: "tailwind-converter",
-            title: "CSS → Tailwind Converter",
+            title: "Tailwind Converter",
+            contexts: ["all"],
+         });
+         chrome.contextMenus.create({
+            id: "tailwind-tester",
+            title: "Tailwind UI Tester",
             contexts: ["all"],
          });
       } else {
@@ -22,8 +27,12 @@ chrome.runtime.onMessage.addListener((msg) => {
 
 // ✅ 메뉴 클릭 → content script에 전달
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-   if (tab?.id && info.menuItemId === "tailwind-converter") {
-      console.log("✅ 메뉴 클릭됨, content.js로 메시지 보냄");
-      chrome.tabs.sendMessage(tab.id, { action: "startInspector" });
+   console.log(info.menuItemId);
+   if (!tab?.id) return;
+   if (info.menuItemId === "tailwind-converter") {
+      chrome.tabs.sendMessage(tab.id, { action: "startConverter" });
+   }
+   if (info.menuItemId === "tailwind-tester") {
+      chrome.tabs.sendMessage(tab.id, { action: "startTester" });
    }
 });

@@ -4,20 +4,22 @@
    "version": "0.0.0",
    "type": "module",
    "scripts": {
+      "generate:tw": "tsx scripts/gen-tw-meta.ts",
       "dev:css:once": "tailwindcss -i ./src/global.css -o ./src/tailwind.css",
       "dev:css": "tailwindcss -i ./src/global.css -o ./src/tailwind.css --watch",
       "dev:main": "vite build --config vite.config.ts --watch",
       "dev:content": "vite build --config vite.content.config.ts --watch",
-      "dev": "npm run dev:css:once && npm-run-all --parallel dev:css dev:main dev:content",
+      "dev": "npm run generate:tw  && npm run dev:css:once && npm-run-all --parallel dev:css dev:main dev:content",
       "build:css": "tailwindcss -i ./src/global.css -o ./src/tailwind.css --minify",
       "build:main": "vite build --config vite.config.ts",
       "build:content": "vite build --config vite.content.config.ts",
-      "build": "npm run build:css && npm run build:main && npm run build:content",
+      "build": "npm run generate:tw && npm run build:css && npm run build:main && npm run build:content",
       "lint": "eslint ."
    },
    "dependencies": {
       "@fontsource/inter": "^5.2.8",
       "@heroicons/react": "^2.2.0",
+      "fuse.js": "^7.1.0",
       "postcss-safe-parser": "^7.0.1",
       "react": "^19.1.1",
       "react-dom": "^19.1.1"

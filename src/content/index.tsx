@@ -1,26 +1,30 @@
-import React, { useEffect, useState } from "react";
+// src/content/index.tsx
+import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
 import ConverterPopover from "./apps/converter";
-
+import TesterPopover from "./apps/tester";
 import tailwindCss from "../tailwind.css?inline";
 import { injectFonts } from "../content/fontLoader";
-import { initInspector } from "../content/inspector";
-import TesterPopover from "./apps/tester";
+import { initInspector, removeInspectorInfo } from "../content/inspector";
+import { logger } from "../hooks/useUtils";
 
 /* ==================================================================================
-   iframe + Tailwind 초기 세팅
+   iframe (모달 + 배경 블러)
    ================================================================================== */
 function createInspectorIframe() {
    const iframe = document.createElement("iframe");
    iframe.id = "tw-inspector-iframe";
+
    Object.assign(iframe.style, {
-      position: "absolute",
-      top: "0",
-      left: "0",
+      position: "fixed",
+      inset: "0",
       zIndex: "2147483647",
       border: "none",
-      background: "transparent",
+      width: "100vw",
+      height: "100vh",
+
+      display: "none", // ✅ 처음에는 완전 숨김
       pointerEvents: "none",
    });
    document.body.appendChild(iframe);
@@ -30,18 +34,23 @@ function createInspectorIframe() {
    iframeDoc.write("<!DOCTYPE html><html><head></head><body></body></html>");
    iframeDoc.close();
 
+   // Tailwind & 폰트
    const styleEl = iframeDoc.createElement("style");
    styleEl.textContent = tailwindCss;
    iframeDoc.head.appendChild(styleEl);
+   injectFonts(iframeDoc);
 
    const resetEl = iframeDoc.createElement("style");
    resetEl.textContent = `
-      html, body { margin: 0; padding: 0; background: transparent; }
-      * { box-sizing: border-box; }
-   `;
+    html, body {
+      margin: 0; padding: 0;
+      background: transparent;
+      overflow: hidden;
+      width: 100%; height: 100%;
+    }
+    * { box-sizing: border-box; }
+  `;
    iframeDoc.head.appendChild(resetEl);
-
-   injectFonts(iframeDoc);
 
    const mountEl = iframeDoc.createElement("div");
    iframeDoc.body.appendChild(mountEl);
@@ -54,80 +63,151 @@ const { iframe, iframeDoc, mountEl } = createInspectorIframe();
 /* ==================================================================================
    React App
    ================================================================================== */
+type ModeType = "converter" | "tester" | null;
 
-type ModeType = {
-   type: "converter" | "tester";
-   width: number;
-   height: number;
-};
-export default function App() {
+function App() {
+   const [mode, setMode] = useState<ModeType>(null);
    const [target, setTarget] = useState<HTMLElement | null>(null);
-   const [mode, setMode] = useState<ModeType | null>(null);
+   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+   const [dragging, setDragging] = useState(false);
+   const dragOffset = useRef({ x: 0, y: 0 });
 
-   // ✅ background → 메시지 수신 (오버레이는 initInspector 내부에서)
+   /* ===== background → 메시지 수신 ===== */
    useEffect(() => {
       const listener = (msg: any) => {
          if (msg.action === "startConverter") {
-            setMode({ type: "converter", width: 400, height: 400 });
-            initInspector(setTarget);
+            logger("▶️ startConverter");
+            initInspector((el) => {
+               const rect = el.getBoundingClientRect();
+               const popoverWidth = 400;
+               const popoverHeight = 400;
+               const top = rect.bottom + 8; // ✅ scrollY 제거
+               const left = rect.left + rect.width / 2 - popoverWidth / 2;
+               setPos({ top, left });
+               setTarget(el);
+               setMode("converter");
+               iframe.style.display = "block";
+               iframe.style.pointerEvents = "auto";
+            });
          }
          if (msg.action === "startTester") {
-            setMode({ type: "tester", width: 400, height: 400 });
-            initInspector(setTarget);
+            logger("▶️ startTester");
+            initInspector((el) => {
+               const rect = el.getBoundingClientRect();
+               const popoverWidth = 400;
+               const top = rect.bottom + 8;
+               const left = rect.left + rect.width / 2 - popoverWidth / 2;
+               setPos({ top, left });
+               setTarget(el);
+               setMode("tester");
+               iframe.style.display = "block";
+               iframe.style.pointerEvents = "auto";
+            });
          }
       };
-
       chrome.runtime.onMessage.addListener(listener);
       return () => chrome.runtime.onMessage.removeListener(listener);
    }, []);
 
-   // ✅ Popover 위치 및 외부 클릭 제어
    useEffect(() => {
-      if (!target) {
-         iframe.style.pointerEvents = "none";
-         iframe.style.width = "0";
-         iframe.style.height = "0";
-         return;
+      if (mode) {
+         document.body.style.overflow = "hidden"; // ✅ 스크롤 막기
+      } else {
+         document.body.style.overflow = "auto"; // ✅ 다시 허용
       }
-      if (!mode) return;
-
-      const rect = target.getBoundingClientRect();
-      const width = mode.width;
-      const height = mode.height;
-      const top = rect.bottom + window.scrollY + 8;
-      const left = rect.left + window.scrollX + rect.width / 2 - width / 2;
-
-      Object.assign(iframe.style, {
-         pointerEvents: "auto",
-         width: `${width}px`,
-         height: `${height}px`,
-         top: `${top}px`,
-         left: `${left}px`,
-      });
-
-      const handleOutsideClick = (e: MouseEvent) => {
-         const clickedInsideIframe =
-            iframe.contentDocument?.contains(e.target as Node) || iframe.contains(e.target as Node);
-         if (!clickedInsideIframe) setTarget(null);
-      };
-
-      const stopInsideClick = (e: MouseEvent) => e.stopPropagation();
-      iframeDoc.addEventListener("mousedown", stopInsideClick, true);
-      window.addEventListener("mousedown", handleOutsideClick, true);
 
       return () => {
-         window.removeEventListener("mousedown", handleOutsideClick, true);
-         iframeDoc.removeEventListener("mousedown", stopInsideClick, true);
+         document.body.style.overflow = "auto";
       };
-   }, [target]);
+   }, [mode]);
+   /* ===== 팝오버 외부 클릭 시 닫기 ===== */
+   useEffect(() => {}, []);
 
-   if (!mode || !target) return null;
+   /* ==================================================================================
+      🔹 드래그 로직 (handle 내부 영역에서만)
+   ================================================================================== */
+   useEffect(() => {
+      if (!iframeDoc) return;
+
+      const handleMouseDown = (e: MouseEvent) => {
+         const t = e.target as HTMLElement;
+         if (!t.closest("#tw-drag-handle")) return; // ✅ 드래그 핸들이 아니면 무시
+         e.preventDefault();
+         e.stopPropagation();
+
+         const popup = iframeDoc.querySelector("#tw-popup-container") as HTMLElement | null;
+         if (!popup) return;
+
+         setDragging(true);
+
+         const rect = popup.getBoundingClientRect();
+         dragOffset.current = {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+         };
+      };
+
+      const handleMouseMove = (e: MouseEvent) => {
+         if (!dragging) return;
+         setPos({
+            top: e.clientY - dragOffset.current.y,
+            left: e.clientX - dragOffset.current.x,
+         });
+      };
+
+      const handleMouseUp = () => setDragging(false);
+
+      iframeDoc.addEventListener("mousedown", handleMouseDown, true);
+      iframeDoc.addEventListener("mousemove", handleMouseMove, true);
+      iframeDoc.addEventListener("mouseup", handleMouseUp, true);
+
+      return () => {
+         iframeDoc.removeEventListener("mousedown", handleMouseDown, true);
+         iframeDoc.removeEventListener("mousemove", handleMouseMove, true);
+         iframeDoc.removeEventListener("mouseup", handleMouseUp, true);
+      };
+   }, [dragging, iframeDoc]);
+
+   /* ==================================================================================
+      렌더
+   ================================================================================== */
+   if (!mode || !target || !pos) return null;
 
    return (
-      <div className="ex-tw-font-inter">
-         {mode.type === "converter" && <ConverterPopover target={target} />}
-         {mode.type === "tester" && <TesterPopover target={target} />}
-      </div>
+      <>
+         {/* ① 클릭 감지용 패널 (투명 or 반투명) */}
+         <div
+            id="tw-popup-panel"
+            className="ex-tw-fixed inset-0 ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
+            onMouseDown={() => {
+               // 팝업 닫기
+               setMode(null);
+               setTarget(null);
+               setPos(null);
+               removeInspectorInfo();
+               iframe.style.display = "none";
+               iframe.style.pointerEvents = "none";
+            }}
+         />
+
+         {/* ② 실제 팝업 */}
+         <div
+            id="tw-popup-container"
+            className="ex-tw-absolute ex-tw-bg-white ex-tw-rounded-2xl ex-tw-shadow-2xl 
+                 ex-tw-border ex-tw-border-gray-200 ex-tw-transition-all ex-tw-duration-200
+                 ex-tw-z-[2147483646]"
+            style={{
+               width: 400,
+               height: 400,
+               top: pos.top,
+               left: pos.left,
+               cursor: dragging ? "grabbing" : "default",
+            }}
+         >
+            {mode === "converter" && <ConverterPopover target={target} />}
+            {mode === "tester" && <TesterPopover target={target} />}
+         </div>
+      </>
    );
 }
 

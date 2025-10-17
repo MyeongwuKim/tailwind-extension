@@ -26,7 +26,28 @@ export default function TesterPopover({ target }: { target: HTMLElement }) {
                </h3>
             </div>
             <div>
-               <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">Disable</h3>
+               <div className="ex-tw-relative ex-tw-overflow-visible">
+                  <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
+                     Disable
+                     <ClassInput placeholder="Disable 클래스 입력" target={target} />
+                  </h3>
+               </div>
+            </div>
+            <div>
+               <div className="ex-tw-relative ex-tw-overflow-visible">
+                  <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
+                     hover
+                     <ClassInput placeholder="hover 클래스 입력" target={target} />
+                  </h3>
+               </div>
+            </div>
+            <div>
+               <div className="ex-tw-relative ex-tw-overflow-visible">
+                  <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
+                     Focus
+                     <ClassInput placeholder="Focus 클래스 입력" target={target} />
+                  </h3>
+               </div>
             </div>
          </div>
       </div>

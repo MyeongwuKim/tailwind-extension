@@ -1,7 +1,8 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import Fuse from "fuse.js";
-import twMeta from "../tw-meta.json";
+import twMeta from "../tw-meta.clean.json";
+import { logger } from "../hooks/useUtils";
 
 interface TWItem {
    name: string;
@@ -23,7 +24,10 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
       left: number;
       width: number;
    } | null>(null);
+   /* ========== 키 입력 처리 ========== */
+   const [highlightIndex, setHighlightIndex] = useState<number>(-1);
 
+   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
    const inputRef = useRef<HTMLInputElement>(null);
    const containerRef = useRef<HTMLDivElement>(null);
    const roRef = useRef<ResizeObserver | null>(null);
@@ -39,14 +43,30 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
       []
    );
 
+   useEffect(() => {
+      if (highlightIndex >= 0 && itemRefs.current[highlightIndex]) {
+         itemRefs.current[highlightIndex]?.scrollIntoView({
+            block: "nearest",
+            behavior: "smooth", // 자연스럽게 스크롤 이동
+         });
+      }
+   }, [highlightIndex]);
+
    /* ========== 입력 시 자동완성 ========== */
    useEffect(() => {
-      if (input.length < 2) return setSuggestions([]);
+      if (input.length < 2) {
+         setSuggestions([]);
+         setHighlightIndex(-1);
+         return;
+      }
+
       const results = fuse
          .search(input)
          .slice(0, 10)
          .map((r) => r.item);
+
       setSuggestions(results);
+      setHighlightIndex(results.length > 0 ? 0 : -1); // ✅ 입력 시 인덱스 초기화
    }, [input, fuse]);
 
    /* ========== 드롭다운 위치 계산 (iframe 내부 좌표 기준) ========== */
@@ -59,6 +79,16 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
          width: rect.width,
       });
    };
+
+   // ✅ 컬러 관련 prefix 판별
+   function isColorUtility(name: string) {
+      return (
+         name.startsWith("bg-") ||
+         name.startsWith("text-") ||
+         name.startsWith("border-") ||
+         name.startsWith("ring-")
+      );
+   }
 
    useLayoutEffect(() => {
       if (suggestions.length > 0) updateDropdownPos();
@@ -100,11 +130,26 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
    /* ========== 키 입력 처리 ========== */
    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (isComposing) return;
-      if (["Enter", "Comma", " "].includes(e.code)) {
+
+      if (e.code === "ArrowDown") {
          e.preventDefault();
-         if (suggestions.length && input) addTag(suggestions[0].name);
-         else addTag(input);
+         setHighlightIndex((prev) => (prev < suggestions.length - 1 ? prev + 1 : 0));
       }
+
+      if (e.code === "ArrowUp") {
+         e.preventDefault();
+         setHighlightIndex((prev) => (prev > 0 ? prev - 1 : suggestions.length - 1));
+      }
+
+      if (e.code === "Enter") {
+         e.preventDefault();
+         if (highlightIndex >= 0 && suggestions[highlightIndex]) {
+            addTag(suggestions[highlightIndex].name);
+         } else if (input.trim()) {
+            addTag(input);
+         }
+      }
+
       if (e.code === "Backspace" && !input && tags.length) {
          setTags((prev) => prev.slice(0, -1));
       }
@@ -130,22 +175,28 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
                     width: dropdownPos.width,
                  }}
               >
-                 {suggestions.map((item) => (
+                 {suggestions.map((item, i) => (
                     <button
+                       ref={(el) => {
+                          itemRefs.current[i] = el;
+                       }}
                        key={item.name}
                        onClick={(e) => {
-                          e.stopPropagation(); // 버튼 클릭 시도 전파 방지
+                          e.stopPropagation();
                           addTag(item.name);
                        }}
-                       className="ex-tw-flex ex-tw-items-center ex-tw-gap-2 ex-tw-w-full
-                         ex-tw-text-left ex-tw-px-3 ex-tw-py-2 hover:ex-tw-bg-gray-100 ex-tw-transition"
+                       className={`ex-tw-flex ex-tw-items-center ex-tw-gap-2 ex-tw-w-full
+      ex-tw-text-left ex-tw-px-3 ex-tw-py-2 ex-tw-transition
+      ${i === highlightIndex ? "ex-tw-bg-blue-100" : "hover:ex-tw-bg-gray-100"}`}
                     >
-                       {item.name.startsWith("bg-") && (
+                       {/* ✅ 색상 클래스일 경우 색상 원 표시 */}
+                       {isColorUtility(item.name) && (
                           <span
                              className="ex-tw-w-3 ex-tw-h-3 ex-tw-rounded-full ex-tw-border ex-tw-border-gray-300"
-                             style={{ backgroundColor: extractColor(item.name) }}
+                             style={{ backgroundColor: item.color || extractColor(item.name) }}
                           />
                        )}
+
                        <span className="ex-tw-text-sm ex-tw-text-gray-800">{item.name}</span>
                     </button>
                  ))}

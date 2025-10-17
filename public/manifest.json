@@ -25,7 +25,7 @@
    },
    "web_accessible_resources": [
       {
-         "resources": ["fonts/*.woff2"],
+         "resources": ["fonts/*.woff2", "assets/tw-meta.built.css"],
          "matches": ["<all_urls>"]
       }
    ]

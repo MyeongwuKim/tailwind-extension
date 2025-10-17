@@ -1,0 +1,4 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* 아무 것도 넣지 마세요. content 토큰만으로 유틸리티 규칙이 생성됩니다. */

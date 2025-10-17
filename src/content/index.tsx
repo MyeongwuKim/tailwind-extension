@@ -58,6 +58,12 @@ function createInspectorIframe() {
    return { iframe, iframeDoc, mountEl };
 }
 
+const style = document.createElement("link");
+style.id = "ex-tw-tester";
+style.rel = "stylesheet";
+style.href = chrome.runtime.getURL("assets/tw-meta.built.css");
+document.head.appendChild(style);
+
 const { iframe, iframeDoc, mountEl } = createInspectorIframe();
 
 /* ==================================================================================
@@ -66,7 +72,11 @@ const { iframe, iframeDoc, mountEl } = createInspectorIframe();
 type ModeType = "converter" | "tester" | null;
 
 function App() {
-   const [mode, setMode] = useState<ModeType>(null);
+   const [modeProps, setModeProps] = useState<{ mode: ModeType; width: number; height: number }>({
+      mode: null,
+      width: 0,
+      height: 0,
+   });
    const [target, setTarget] = useState<HTMLElement | null>(null);
    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
    const [dragging, setDragging] = useState(false);
@@ -85,7 +95,7 @@ function App() {
                const left = rect.left + rect.width / 2 - popoverWidth / 2;
                setPos({ top, left });
                setTarget(el);
-               setMode("converter");
+               setModeProps({ mode: "converter", width: popoverWidth, height: popoverHeight });
                iframe.style.display = "block";
                iframe.style.pointerEvents = "auto";
             });
@@ -95,11 +105,12 @@ function App() {
             initInspector((el) => {
                const rect = el.getBoundingClientRect();
                const popoverWidth = 400;
+               const popoverHeight = 430;
                const top = rect.bottom + 8;
                const left = rect.left + rect.width / 2 - popoverWidth / 2;
                setPos({ top, left });
                setTarget(el);
-               setMode("tester");
+               setModeProps({ mode: "tester", width: popoverWidth, height: popoverHeight });
                iframe.style.display = "block";
                iframe.style.pointerEvents = "auto";
             });
@@ -110,7 +121,7 @@ function App() {
    }, []);
 
    useEffect(() => {
-      if (mode) {
+      if (modeProps.mode) {
          document.body.style.overflow = "hidden"; // ✅ 스크롤 막기
       } else {
          document.body.style.overflow = "auto"; // ✅ 다시 허용
@@ -119,7 +130,7 @@ function App() {
       return () => {
          document.body.style.overflow = "auto";
       };
-   }, [mode]);
+   }, [modeProps.mode]);
    /* ===== 팝오버 외부 클릭 시 닫기 ===== */
    useEffect(() => {}, []);
 
@@ -171,7 +182,7 @@ function App() {
    /* ==================================================================================
       렌더
    ================================================================================== */
-   if (!mode || !target || !pos) return null;
+   if (!modeProps.mode || !target || !pos) return null;
 
    return (
       <>
@@ -181,7 +192,7 @@ function App() {
             className="ex-tw-fixed inset-0 ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
             onMouseDown={() => {
                // 팝업 닫기
-               setMode(null);
+               setModeProps({ mode: null, width: 0, height: 0 });
                setTarget(null);
                setPos(null);
                removeInspectorInfo();
@@ -194,18 +205,18 @@ function App() {
          <div
             id="tw-popup-container"
             className="ex-tw-absolute ex-tw-bg-white ex-tw-rounded-2xl ex-tw-shadow-2xl 
-                 ex-tw-border ex-tw-border-gray-200 ex-tw-transition-all ex-tw-duration-200
+                 ex-tw-border ex-tw-border-gray-200 
                  ex-tw-z-[2147483646]"
             style={{
-               width: 400,
-               height: 400,
+               width: modeProps.width,
+               height: modeProps.height,
                top: pos.top,
                left: pos.left,
                cursor: dragging ? "grabbing" : "default",
             }}
          >
-            {mode === "converter" && <ConverterPopover target={target} />}
-            {mode === "tester" && <TesterPopover target={target} />}
+            {modeProps.mode === "converter" && <ConverterPopover target={target} />}
+            {modeProps.mode === "tester" && <TesterPopover target={target} />}
          </div>
       </>
    );

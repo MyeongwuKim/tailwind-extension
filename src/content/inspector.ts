@@ -9,8 +9,6 @@ export function removeInspectorInfo() {
    overlay = null;
    label?.remove();
    label = null;
-   blocker?.remove();
-   blocker = null;
 }
 
 export function initInspector(setTarget: (el: HTMLElement) => void) {
@@ -19,6 +17,9 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
    if (blocker) return;
 
    function stopInspector() {
+      blocker?.remove();
+      blocker = null;
+
       document.removeEventListener("mousemove", handleMove, true);
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("keydown", handleKeyDown, true);
@@ -98,7 +99,7 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
       label.textContent = `${tag}${id}${classes}`;
 
       Object.assign(label.style, {
-         top: `${rect.top + window.scrollY - 20}px`,
+         top: `${rect.top + window.scrollY - 2}px`,
          left: `${rect.left + window.scrollX}px`,
       });
    }

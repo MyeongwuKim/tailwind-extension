@@ -10,11 +10,11 @@ interface TWItem {
 }
 
 interface ClassInputProps {
-   placeholder?: string;
+   type: "Active" | "Focus" | "Hover" | "Disable";
    target?: HTMLElement | null;
 }
 
-export default function ClassInput({ placeholder = "클래스 입력...", target }: ClassInputProps) {
+export default function ClassInput({ type, target }: ClassInputProps) {
    const [tags, setTags] = useState<string[]>([]);
    const [input, setInput] = useState("");
    const [isComposing, setIsComposing] = useState(false);
@@ -124,7 +124,23 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
    /* ========== 타겟 엘리먼트에 클래스 적용 ========== */
    useEffect(() => {
       if (!target) return;
-      target.className = tags.join(" ");
+
+      // 현재 DOM에 설정된 class들을 배열로 변환
+      const original = target.className.split(" ").filter(Boolean);
+
+      // 기존 ex-tw-로 시작하는 클래스 제거
+      const withoutPrefixed = original.filter(
+         (cls) => !cls.startsWith(`${type.toLowerCase()}:ex-tw-${cls}`)
+      );
+
+      // 새 태그들에 ex-tw- 접두사 붙이기
+      const prefixed = tags.map((tag) => `${type.toLowerCase()}:ex-tw-${tag}`);
+
+      // 합치고 중복 제거
+      const merged = Array.from(new Set([...withoutPrefixed, ...prefixed]));
+
+      // 다시 적용
+      target.className = merged.join(" ");
    }, [tags, target]);
 
    /* ========== 키 입력 처리 ========== */
@@ -235,7 +251,7 @@ export default function ClassInput({ placeholder = "클래스 입력...", target
                      setIsComposing(false);
                      setInput(e.currentTarget.value);
                   }}
-                  placeholder={tags.length ? "" : placeholder}
+                  placeholder={tags.length ? "" : `${type} 클래스 입력`}
                   className="ex-tw-flex-1 ex-tw-min-w-[120px] ex-tw-border-none ex-tw-bg-transparent ex-tw-text-text1 ex-tw-text-base focus:ex-tw-outline-none"
                />
             </div>

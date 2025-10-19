@@ -1,5 +1,7 @@
 import ClassInput from "../../components/ClassInput";
+import PreviewPortal from "../../components/previewBox";
 
+const evtList = ["Active", "Hover", "Disable", "Focus"] as const;
 export default function TesterPopover({ target }: { target: HTMLElement }) {
    return (
       <div
@@ -19,37 +21,17 @@ export default function TesterPopover({ target }: { target: HTMLElement }) {
             <h2 className="ex-tw-text-xl ex-tw-font-bold ex-tw-text-text5">Tailwind UI Tester</h2>
          </div>
          <div id="classAdd-area" className="ex-tw-gap-2 ex-tw-flex ex-tw-flex-col ex-tw-p-4">
-            <div className="ex-tw-relative ex-tw-overflow-visible">
-               <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
-                  Click
-                  <ClassInput placeholder="Click 클래스 입력" target={target} />
-               </h3>
-            </div>
-            <div>
-               <div className="ex-tw-relative ex-tw-overflow-visible">
+            {evtList.map((evt, i) => (
+               <div key={i} className="ex-tw-relative ex-tw-overflow-visible">
                   <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
-                     Disable
-                     <ClassInput placeholder="Disable 클래스 입력" target={target} />
+                     {evt}
+                     <ClassInput type={evt} target={target} />
                   </h3>
                </div>
-            </div>
-            <div>
-               <div className="ex-tw-relative ex-tw-overflow-visible">
-                  <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
-                     hover
-                     <ClassInput placeholder="hover 클래스 입력" target={target} />
-                  </h3>
-               </div>
-            </div>
-            <div>
-               <div className="ex-tw-relative ex-tw-overflow-visible">
-                  <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
-                     Focus
-                     <ClassInput placeholder="Focus 클래스 입력" target={target} />
-                  </h3>
-               </div>
-            </div>
+            ))}
          </div>
+
+         <PreviewPortal target={target} />
       </div>
    );
 }

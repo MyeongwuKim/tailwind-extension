@@ -9,9 +9,6 @@ import { injectFonts } from "../content/fontLoader";
 import { initInspector, removeInspectorInfo } from "../content/inspector";
 import { logger } from "../hooks/useUtils";
 
-/* ==================================================================================
-   iframe (모달 + 배경 블러)
-   ================================================================================== */
 function createInspectorIframe() {
    const iframe = document.createElement("iframe");
    iframe.id = "tw-inspector-iframe";
@@ -71,7 +68,7 @@ const { iframe, iframeDoc, mountEl } = createInspectorIframe();
    ================================================================================== */
 type ModeType = "converter" | "tester" | null;
 
-function App() {
+export function App() {
    const [modeProps, setModeProps] = useState<{ mode: ModeType; width: number; height: number }>({
       mode: null,
       width: 0,
@@ -80,6 +77,8 @@ function App() {
    const [target, setTarget] = useState<HTMLElement | null>(null);
    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
    const [dragging, setDragging] = useState(false);
+   const [scrollPos, setScrollPos] = useState({ top: 0, left: 0 });
+
    const dragOffset = useRef({ x: 0, y: 0 });
 
    /* ===== background → 메시지 수신 ===== */
@@ -116,24 +115,29 @@ function App() {
             });
          }
       };
+
+      const updateIframePosition = () => {
+         setScrollPos({ top: window.scrollY, left: window.scrollX });
+      };
       chrome.runtime.onMessage.addListener(listener);
-      return () => chrome.runtime.onMessage.removeListener(listener);
+      window.addEventListener("scroll", updateIframePosition);
+      return () => {
+         chrome.runtime.onMessage.removeListener(listener);
+         window.removeEventListener("scroll", updateIframePosition);
+      };
    }, []);
 
-   useEffect(() => {
-      if (modeProps.mode) {
-         document.body.style.overflow = "hidden"; // ✅ 스크롤 막기
-      } else {
-         document.body.style.overflow = "auto"; // ✅ 다시 허용
-      }
-
-      return () => {
-         document.body.style.overflow = "auto";
-      };
-   }, [modeProps.mode]);
-   /* ===== 팝오버 외부 클릭 시 닫기 ===== */
-   useEffect(() => {}, []);
-
+   // useEffect(() => {
+   //    if (!target) return;
+   //    target.addEventListener(
+   //       "click",
+   //       (e) => {
+   //          e.preventDefault();
+   //          e.stopPropagation();
+   //       },
+   //       true
+   //    ); // capture 단계에서 미리 막음
+   // }, [target]);
    /* ==================================================================================
       🔹 드래그 로직 (handle 내부 영역에서만)
    ================================================================================== */
@@ -189,7 +193,7 @@ function App() {
          {/* ① 클릭 감지용 패널 (투명 or 반투명) */}
          <div
             id="tw-popup-panel"
-            className="ex-tw-fixed inset-0 ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
+            className="ex-tw-absolute ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
             onMouseDown={() => {
                // 팝업 닫기
                setModeProps({ mode: null, width: 0, height: 0 });
@@ -201,17 +205,16 @@ function App() {
             }}
          />
 
-         {/* ② 실제 팝업 */}
          <div
             id="tw-popup-container"
             className="ex-tw-absolute ex-tw-bg-white ex-tw-rounded-2xl ex-tw-shadow-2xl 
-                 ex-tw-border ex-tw-border-gray-200 
-                 ex-tw-z-[2147483646]"
+                 ex-tw-border ex-tw-border-gray-200 ex-tw-z-[2147483646]"
             style={{
                width: modeProps.width,
                height: modeProps.height,
-               top: pos.top,
-               left: pos.left,
+               // 💡 문서 기준 좌표(pos)에서 현재 스크롤 위치를 빼줌
+               top: pos.top - scrollPos.top,
+               left: pos.left - scrollPos.left,
                cursor: dragging ? "grabbing" : "default",
             }}
          >

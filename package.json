@@ -5,7 +5,7 @@
    "type": "module",
    "scripts": {
       "meta:generate": "tsx scripts/gen-tw-meta.ts full && tsx scripts/gen-tw-tokens.ts",
-      "meta:fix": "node fix-variant-order.js",
+      "meta:fix": "node lib/fix-variant-order.js",
       "meta:build": "npm run meta:generate && npm run meta:fix && npx tailwindcss -c ./scripts/tailwind.meta.config.js -i ./src/tw-meta.entry.css -o ./src/tw-meta.built.css --minify",
       "dev:css": "tailwindcss -i ./src/global.css -o ./src/tailwind.css --watch",
       "dev:main": "vite build --config vite.config.ts --watch",

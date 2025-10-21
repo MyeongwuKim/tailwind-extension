@@ -1,4 +1,3 @@
-// src/content/index.tsx
 import React, { useEffect, useState, useRef } from "react";
 import { createRoot } from "react-dom/client";
 
@@ -9,6 +8,9 @@ import { injectFonts } from "../content/fontLoader";
 import { initInspector, removeInspectorInfo } from "../content/inspector";
 import { logger } from "../hooks/useUtils";
 
+/* ==================================================================================
+   iframe 생성
+   ================================================================================== */
 function createInspectorIframe() {
    const iframe = document.createElement("iframe");
    iframe.id = "tw-inspector-iframe";
@@ -20,8 +22,7 @@ function createInspectorIframe() {
       border: "none",
       width: "100vw",
       height: "100vh",
-
-      display: "none", // ✅ 처음에는 완전 숨김
+      display: "none",
       pointerEvents: "none",
    });
    document.body.appendChild(iframe);
@@ -31,10 +32,11 @@ function createInspectorIframe() {
    iframeDoc.write("<!DOCTYPE html><html><head></head><body></body></html>");
    iframeDoc.close();
 
-   // Tailwind & 폰트
+   // Tailwind & Meta CSS 주입
    const styleEl = iframeDoc.createElement("style");
    styleEl.textContent = tailwindCss;
    iframeDoc.head.appendChild(styleEl);
+
    injectFonts(iframeDoc);
 
    const resetEl = iframeDoc.createElement("style");
@@ -55,12 +57,6 @@ function createInspectorIframe() {
    return { iframe, iframeDoc, mountEl };
 }
 
-const style = document.createElement("link");
-style.id = "ex-tw-tester";
-style.rel = "stylesheet";
-style.href = chrome.runtime.getURL("assets/tw-meta.built.css");
-document.head.appendChild(style);
-
 const { iframe, iframeDoc, mountEl } = createInspectorIframe();
 
 /* ==================================================================================
@@ -77,11 +73,11 @@ export function App() {
    const [target, setTarget] = useState<HTMLElement | null>(null);
    const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
    const [dragging, setDragging] = useState(false);
-   const [scrollPos, setScrollPos] = useState({ top: 0, left: 0 });
-
    const dragOffset = useRef({ x: 0, y: 0 });
 
-   /* ===== background → 메시지 수신 ===== */
+   /* ==================================================================================
+     background → 메시지 수신
+  ================================================================================== */
    useEffect(() => {
       const listener = (msg: any) => {
          if (msg.action === "startConverter") {
@@ -90,63 +86,84 @@ export function App() {
                const rect = el.getBoundingClientRect();
                const popoverWidth = 400;
                const popoverHeight = 400;
-               const top = rect.bottom + 8; // ✅ scrollY 제거
+
+               const top = rect.bottom + 8;
                const left = rect.left + rect.width / 2 - popoverWidth / 2;
+
                setPos({ top, left });
                setTarget(el);
                setModeProps({ mode: "converter", width: popoverWidth, height: popoverHeight });
+
                iframe.style.display = "block";
                iframe.style.pointerEvents = "auto";
             });
          }
+
          if (msg.action === "startTester") {
             logger("▶️ startTester");
             initInspector((el) => {
                const rect = el.getBoundingClientRect();
                const popoverWidth = 400;
                const popoverHeight = 430;
+
                const top = rect.bottom + 8;
                const left = rect.left + rect.width / 2 - popoverWidth / 2;
+
                setPos({ top, left });
                setTarget(el);
                setModeProps({ mode: "tester", width: popoverWidth, height: popoverHeight });
+
                iframe.style.display = "block";
                iframe.style.pointerEvents = "auto";
             });
          }
       };
 
-      const updateIframePosition = () => {
-         setScrollPos({ top: window.scrollY, left: window.scrollX });
-      };
       chrome.runtime.onMessage.addListener(listener);
-      window.addEventListener("scroll", updateIframePosition);
-      return () => {
-         chrome.runtime.onMessage.removeListener(listener);
-         window.removeEventListener("scroll", updateIframePosition);
-      };
+      return () => chrome.runtime.onMessage.removeListener(listener);
    }, []);
 
-   // useEffect(() => {
-   //    if (!target) return;
-   //    target.addEventListener(
-   //       "click",
-   //       (e) => {
-   //          e.preventDefault();
-   //          e.stopPropagation();
-   //       },
-   //       true
-   //    ); // capture 단계에서 미리 막음
-   // }, [target]);
    /* ==================================================================================
-      🔹 드래그 로직 (handle 내부 영역에서만)
-   ================================================================================== */
+     스크롤 시 위치 갱신 (드래그한 위치 유지)
+  ================================================================================== */
+   useEffect(() => {
+      if (!pos) return;
+
+      let lastScrollY = window.scrollY;
+      let lastScrollX = window.scrollX;
+
+      const handleScroll = () => {
+         if (dragging) return; // 드래그 중이면 무시
+
+         const deltaY = window.scrollY - lastScrollY;
+         const deltaX = window.scrollX - lastScrollX;
+         lastScrollY = window.scrollY;
+         lastScrollX = window.scrollX;
+
+         // ✅ 스크롤 이동량만큼 현재 위치 보정 (드래그한 위치 그대로 유지)
+         setPos((prev) =>
+            prev
+               ? {
+                    top: prev.top - deltaY,
+                    left: prev.left - deltaX,
+                 }
+               : prev
+         );
+      };
+
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      return () => window.removeEventListener("scroll", handleScroll);
+   }, [dragging, pos]);
+
+   /* ==================================================================================
+     드래그 로직
+  ================================================================================== */
    useEffect(() => {
       if (!iframeDoc) return;
 
       const handleMouseDown = (e: MouseEvent) => {
          const t = e.target as HTMLElement;
-         if (!t.closest("#tw-drag-handle")) return; // ✅ 드래그 핸들이 아니면 무시
+         if (!t.closest("#tw-drag-handle")) return;
          e.preventDefault();
          e.stopPropagation();
 
@@ -154,7 +171,6 @@ export function App() {
          if (!popup) return;
 
          setDragging(true);
-
          const rect = popup.getBoundingClientRect();
          dragOffset.current = {
             x: e.clientX - rect.left,
@@ -164,6 +180,7 @@ export function App() {
 
       const handleMouseMove = (e: MouseEvent) => {
          if (!dragging) return;
+         e.preventDefault();
          setPos({
             top: e.clientY - dragOffset.current.y,
             left: e.clientX - dragOffset.current.x,
@@ -184,18 +201,17 @@ export function App() {
    }, [dragging, iframeDoc]);
 
    /* ==================================================================================
-      렌더
-   ================================================================================== */
+     렌더
+  ================================================================================== */
    if (!modeProps.mode || !target || !pos) return null;
 
    return (
       <>
-         {/* ① 클릭 감지용 패널 (투명 or 반투명) */}
+         {/* 백드롭 패널 */}
          <div
             id="tw-popup-panel"
             className="ex-tw-absolute ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
             onMouseDown={() => {
-               // 팝업 닫기
                setModeProps({ mode: null, width: 0, height: 0 });
                setTarget(null);
                setPos(null);
@@ -205,21 +221,21 @@ export function App() {
             }}
          />
 
+         {/* 팝업 본체 */}
          <div
             id="tw-popup-container"
             className="ex-tw-absolute ex-tw-bg-white ex-tw-rounded-2xl ex-tw-shadow-2xl 
-                 ex-tw-border ex-tw-border-gray-200 ex-tw-z-[2147483646]"
+                   ex-tw-border ex-tw-border-gray-200 ex-tw-z-[2147483646]"
             style={{
                width: modeProps.width,
                height: modeProps.height,
-               // 💡 문서 기준 좌표(pos)에서 현재 스크롤 위치를 빼줌
-               top: pos.top - scrollPos.top,
-               left: pos.left - scrollPos.left,
+               top: pos.top,
+               left: pos.left,
                cursor: dragging ? "grabbing" : "default",
             }}
          >
             {modeProps.mode === "converter" && <ConverterPopover target={target} />}
-            {modeProps.mode === "tester" && <TesterPopover target={target} />}
+            {modeProps.mode === "tester" && <TesterPopover target={target} iframeDoc={iframeDoc} />}
          </div>
       </>
    );

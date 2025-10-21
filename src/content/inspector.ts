@@ -54,7 +54,6 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
       const rect = el.getBoundingClientRect();
       showOverlay(rect, el);
    }
-
    function showOverlay(rect: DOMRect, el: HTMLElement) {
       if (!overlay) {
          overlay = document.createElement("div");
@@ -85,9 +84,11 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
             background: "rgba(0,0,0,0.8)",
             padding: "2px 5px",
             borderRadius: "3px",
+            whiteSpace: "nowrap", // 긴 텍스트 한 줄로
          });
          document.body.appendChild(label);
       }
+
       const tag = el.tagName.toLowerCase();
       const siblings = el.parentElement
          ? Array.from(el.parentElement.children).filter((child) => child.tagName === el.tagName)
@@ -98,8 +99,12 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
 
       label.textContent = `${tag}${id}${classes}`;
 
+      // ✅ label 높이 계산해서 그만큼 위로 올림
+      const labelHeight = label.offsetHeight || 20;
+      const top = rect.top + window.scrollY - labelHeight - 8; // 8px 여백
+
       Object.assign(label.style, {
-         top: `${rect.top + window.scrollY - 2}px`,
+         top: `${Math.max(top, 0)}px`, // 화면 위로 벗어나지 않게 보정
          left: `${rect.left + window.scrollX}px`,
       });
    }

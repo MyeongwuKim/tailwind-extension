@@ -1,4 +1,11 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, {
+   useEffect,
+   useLayoutEffect,
+   useMemo,
+   useRef,
+   useState,
+   type RefObject,
+} from "react";
 import ReactDOM from "react-dom";
 import Fuse from "fuse.js";
 import twMeta from "../tw-meta.clean.json";
@@ -10,11 +17,12 @@ interface TWItem {
 }
 
 interface ClassInputProps {
-   type: "Active" | "Focus" | "Hover" | "Disable";
+   type: "Active" | "Focus" | "Hover" | "Disabled";
    target?: HTMLElement | null;
+   preview?: HTMLElement | null;
 }
 
-export default function ClassInput({ type, target }: ClassInputProps) {
+export default function ClassInput({ type, target, preview }: ClassInputProps) {
    const [tags, setTags] = useState<string[]>([]);
    const [input, setInput] = useState("");
    const [isComposing, setIsComposing] = useState(false);
@@ -26,7 +34,7 @@ export default function ClassInput({ type, target }: ClassInputProps) {
    } | null>(null);
    /* ========== 키 입력 처리 ========== */
    const [highlightIndex, setHighlightIndex] = useState<number>(-1);
-
+   const dropdownRef = useRef<HTMLDivElement>(null);
    const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
    const inputRef = useRef<HTMLInputElement>(null);
    const containerRef = useRef<HTMLDivElement>(null);
@@ -42,6 +50,41 @@ export default function ClassInput({ type, target }: ClassInputProps) {
          }),
       []
    );
+
+   // 🔹 스크롤 가능한 부모 찾기 (중첩 스크롤 대응)
+   function findScrollableParent(el: HTMLElement | null): HTMLElement | Window {
+      let current: HTMLElement | null = el;
+      while (current) {
+         const overflowY = window.getComputedStyle(current).overflowY;
+         if (overflowY === "auto" || overflowY === "scroll") {
+            return current;
+         }
+         current = current.parentElement;
+      }
+      return window;
+   }
+
+   useEffect(() => {
+      const handle = () => updateDropdownPos();
+      const scrollParent = inputRef.current ? findScrollableParent(inputRef.current) : window;
+
+      // ✅ 스크롤과 리사이즈에 반응
+      scrollParent.addEventListener("scroll", handle, { passive: true });
+      window.addEventListener("scroll", handle, { passive: true });
+      window.addEventListener("resize", handle);
+
+      if ("ResizeObserver" in window) {
+         roRef.current = new ResizeObserver(handle);
+         if (inputRef.current) roRef.current.observe(inputRef.current);
+      }
+
+      return () => {
+         scrollParent.removeEventListener("scroll", handle);
+         window.removeEventListener("scroll", handle);
+         window.removeEventListener("resize", handle);
+         roRef.current?.disconnect();
+      };
+   }, [inputRef.current]);
 
    useEffect(() => {
       if (highlightIndex >= 0 && itemRefs.current[highlightIndex]) {
@@ -123,28 +166,58 @@ export default function ClassInput({ type, target }: ClassInputProps) {
 
    /* ========== 타겟 엘리먼트에 클래스 적용 ========== */
    useEffect(() => {
-      if (!target) return;
+      logger(preview);
+      if (!preview) return;
 
       // 현재 DOM에 설정된 class들을 배열로 변환
-      const original = target.className.split(" ").filter(Boolean);
+      const original = preview.className.split(" ").filter(Boolean);
 
       // 기존 ex-tw-로 시작하는 클래스 제거
       const withoutPrefixed = original.filter(
-         (cls) => !cls.startsWith(`${type.toLowerCase()}:ex-tw-${cls}`)
+         (cls) => !cls.startsWith(`${type.toLowerCase()}:ex-tw-tester-${cls}`)
       );
 
       // 새 태그들에 ex-tw- 접두사 붙이기
-      const prefixed = tags.map((tag) => `${type.toLowerCase()}:ex-tw-${tag}`);
+      const prefixed = tags.map((tag) => `${type.toLowerCase()}:ex-tw-tester-${tag}`);
 
       // 합치고 중복 제거
       const merged = Array.from(new Set([...withoutPrefixed, ...prefixed]));
 
       // 다시 적용
-      target.className = merged.join(" ");
-   }, [tags, target]);
+      preview.className = merged.join(" ");
+   }, [tags, preview]);
 
-   /* ========== 키 입력 처리 ========== */
+   // ClassInput.tsx
+   useEffect(() => {
+      const handleClose = () => setSuggestions([]);
+
+      document.addEventListener("close-all-dropdowns", handleClose);
+      return () => document.removeEventListener("close-all-dropdowns", handleClose);
+   }, []);
+
    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === " " || e.code === "Space")) {
+         e.preventDefault();
+         console.log("✅ Ctrl+Space 작동함");
+
+         // ✅ 입력값이 없더라도 자동완성 강제 표시
+         const query = input.trim() || ""; // or "bg-" 같은 기본 prefix 가능
+         const results = fuse
+            .search(query)
+            .slice(0, 10)
+            .map((r) => r.item);
+
+         setSuggestions(results);
+         setHighlightIndex(results.length > 0 ? 0 : -1);
+         updateDropdownPos(); // 드롭다운 위치 갱신
+         return;
+      }
+      //ESC 처리
+      if (e.key === "Escape" || e.code === "Escape" || (e as any).keyCode === 27) {
+         e.preventDefault();
+         setSuggestions([]);
+         return;
+      }
       if (isComposing) return;
 
       if (e.code === "ArrowDown") {
@@ -167,6 +240,7 @@ export default function ClassInput({ type, target }: ClassInputProps) {
       }
 
       if (e.code === "Backspace" && !input && tags.length) {
+         e.preventDefault();
          setTags((prev) => prev.slice(0, -1));
       }
    };
@@ -175,44 +249,43 @@ export default function ClassInput({ type, target }: ClassInputProps) {
       dropdownPos && suggestions.length > 0 && inputRef.current
          ? ReactDOM.createPortal(
               <div
-                 // ✅ 추가된 부분
-                 onMouseDown={(e) => {
-                    e.stopPropagation(); // 상위로 이벤트 전달 막기
-                 }}
-                 onClick={(e) => {
-                    e.stopPropagation();
-                 }}
+                 id="meta-dropdown"
+                 ref={dropdownRef}
+                 onMouseDown={(e) => e.stopPropagation()}
+                 onClick={(e) => e.stopPropagation()}
                  className="ex-tw-fixed ex-tw-bg-white ex-tw-border ex-tw-border-gray-200
-                     ex-tw-rounded-md ex-tw-shadow-lg ex-tw-z-[2147483646]
-                     ex-tw-max-h-72 ex-tw-overflow-auto ex-tw-dropdown"
+                         ex-tw-rounded-md ex-tw-shadow-lg ex-tw-z-[2147483646]
+                         ex-tw-max-h-72 ex-tw-overflow-auto ex-tw-dropdown"
                  style={{
-                    top: dropdownPos.top,
-                    left: dropdownPos.left,
+                    top: dropdownPos.top - window.scrollY, // ✅ fixed 기준으로 스크롤 보정
+                    left: dropdownPos.left - window.scrollX,
                     width: dropdownPos.width,
                  }}
               >
                  {suggestions.map((item, i) => (
                     <button
-                       ref={(el) => {
-                          itemRefs.current[i] = el;
-                       }}
+                       ref={(el) => (itemRefs.current[i] = el)}
                        key={item.name}
                        onClick={(e) => {
                           e.stopPropagation();
                           addTag(item.name);
                        }}
-                       className={`ex-tw-flex ex-tw-items-center ex-tw-gap-2 ex-tw-w-full
-      ex-tw-text-left ex-tw-px-3 ex-tw-py-2 ex-tw-transition
-      ${i === highlightIndex ? "ex-tw-bg-blue-100" : "hover:ex-tw-bg-gray-100"}`}
+                       className={`ex-tw-flex ex-tw-items-center ex-tw-gap-2 ex-tw-w-full 
+                                ex-tw-text-left ex-tw-px-3 ex-tw-py-2 ex-tw-transition
+                                ${
+                                   i === highlightIndex
+                                      ? "ex-tw-bg-blue-100"
+                                      : "hover:ex-tw-bg-gray-100"
+                                }`}
                     >
-                       {/* ✅ 색상 클래스일 경우 색상 원 표시 */}
                        {isColorUtility(item.name) && (
                           <span
                              className="ex-tw-w-3 ex-tw-h-3 ex-tw-rounded-full ex-tw-border ex-tw-border-gray-300"
-                             style={{ backgroundColor: item.color || extractColor(item.name) }}
+                             style={{
+                                backgroundColor: item.color || extractColor(item.name),
+                             }}
                           />
                        )}
-
                        <span className="ex-tw-text-sm ex-tw-text-gray-800">{item.name}</span>
                     </button>
                  ))}

@@ -5,12 +5,12 @@ const baseNames = full
    .filter((n) => typeof n === "string" && n.trim().length > 0);
 
 // ✅ prefix 붙인 전체 클래스 이름 만들기
-const prefixedNames = baseNames.map((n) => `ex-tw-${n.replace(/^ex-tw-/, "")}`);
+const prefixedNames = baseNames.map((n) => `ex-tw-tester-${n.replace(/^ex-tw-tester-/, "")}`);
 
 export default {
-   prefix: "ex-tw-", // 유지
+   prefix: "ex-tw-tester-", // 유지
    content: ["./src/tw-meta.tokens.html"],
-
+   important: true, // ✅ 모든 유틸리티 규칙에 !important 추가
    safelist: [
       // 기본 클래스
       ...prefixedNames,

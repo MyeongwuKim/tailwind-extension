@@ -3,7 +3,7 @@ import resolveConfig from "tailwindcss/resolveConfig";
 
 const tailwindConfig = (await import("../tailwind.config.js")).default;
 const full = resolveConfig(tailwindConfig);
-const prefix = full.prefix ?? ""; // ex: "ex-tw-"
+const prefix = full.prefix ? full.prefix + "tester-" : ""; // ex: "ex-tw-"
 
 const meta = JSON.parse(fs.readFileSync("./src/tw-meta.full.json", "utf-8")) as { name: string }[];
 

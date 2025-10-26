@@ -2,6 +2,25 @@
 @tailwind components;
 @tailwind utilities;
 
+/* react-colorful 기본 대체 스타일 */
+.react-colorful {
+   width: 100%;
+   height: 150px;
+}
+.react-colorful__saturation {
+   position: relative;
+   width: 100%;
+   height: 100%;
+   border-radius: 0.5rem;
+   overflow: hidden;
+   cursor: pointer;
+}
+.react-colorful__hue {
+   margin-top: 12px;
+   height: 12px;
+   border-radius: 9999px;
+}
+
 :root {
    --color-background1: #fff;
    --color-text1: #212529;

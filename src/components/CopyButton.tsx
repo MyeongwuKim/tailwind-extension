@@ -4,9 +4,14 @@ import { ClipboardIcon, CheckIcon } from "@heroicons/react/24/outline";
 interface CopyButtonProps {
    textToCopy: string;
    className?: string;
+   useIcon?: boolean;
 }
 
-export default function CopyButton({ textToCopy, className = "" }: CopyButtonProps) {
+export default function CopyButton({
+   textToCopy,
+   className = "",
+   useIcon = true,
+}: CopyButtonProps) {
    const [copied, setCopied] = useState(false);
 
    const handleCopy = async () => {
@@ -36,7 +41,7 @@ export default function CopyButton({ textToCopy, className = "" }: CopyButtonPro
             </>
          ) : (
             <>
-               <ClipboardIcon className="ex-tw-w-5 ex-tw-h-5" />
+               {useIcon && <ClipboardIcon className="ex-tw-w-5 ex-tw-h-5" />}
                <span>Copy</span>
             </>
          )}

@@ -78,7 +78,9 @@ export default function DropdownSuggestion({
       >
          {suggestions.map((item, i) => (
             <button
-               ref={(el) => (itemRefs.current[i] = el)}
+               ref={(el) => {
+                  itemRefs.current[i] = el;
+               }}
                key={item.name}
                onClick={(e) => {
                   e.stopPropagation();

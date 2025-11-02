@@ -1,4 +1,4 @@
-import fullConfig from "../../full-config.json";
+import fullConfig from "../full-config.json";
 
 /* ========== Helpers ========== */
 function remToPx(rem: string) {

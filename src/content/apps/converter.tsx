@@ -18,21 +18,6 @@ export default function ConverterPopover({ target }: { target: HTMLElement }) {
       return { tailwindStyles, classCategory };
    }, [target]);
 
-   const targetName = useMemo(() => {
-      const tag = target.tagName.toLowerCase();
-      let index = 0;
-      if (target.parentElement) {
-         const siblings = Array.from(target.parentElement.children).filter(
-            (child) => child.tagName === target.tagName
-         );
-         index = siblings.indexOf(target);
-      }
-
-      const id = target.id ? `#${target.id}` : `#${index}`;
-      const classes = target.classList.length ? "." + Array.from(target.classList).join(".") : "";
-      return `${tag}${id}${classes}`;
-   }, [target]);
-
    return (
       <div
          onMouseDown={(e) => e.stopPropagation()}

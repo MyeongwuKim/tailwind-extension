@@ -100,7 +100,7 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
    /* ========== 컬러피커팝업 감지 ========== */
    useEffect(() => {
       const match = input.match(
-         /^(hover|active|focus|disabled)?\:?(bg|text|border)-\[#([0-9a-fA-F]{0,6})\]?$/
+         /^(hover|active|focus|disabled)?:?(bg|text|border)-\[#([0-9a-fA-F]{0,6})\]?$/
       );
 
       if (match && inputRef.current) {
@@ -204,7 +204,7 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
       // ✅ 입력값이 컬러 관련인지 체크
       const isColorPattern =
-         /^(hover|active|focus|disabled)?\:?(bg|text|border|ring)-\[#?[0-9a-fA-F]*\]?$/i.test(
+         /^(hover|active|focus|disabled)?:?(bg|text|border|ring)-\[#?[0-9a-fA-F]*\]?$/i.test(
             input.trim()
          );
 
@@ -292,7 +292,7 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
       if (!preview) return;
 
       // 🎯 variant/prefix 추출 (예: "active:bg-[#1c3051]" → variant=active, prefix=bg)
-      const match = tag.match(/^(hover|active|focus|disabled)?\:?(bg|text|border)-/);
+      const match = tag.match(/^(hover|active|focus|disabled)?:?(bg|text|border)-/);
       if (!match) return;
       const variant = match[1]?.toLowerCase() || type.toLowerCase();
       const prefix = match[2];

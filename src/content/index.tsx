@@ -79,47 +79,44 @@ export function App() {
      background → 메시지 수신
   ================================================================================== */
    useEffect(() => {
-      const listener = (msg: any) => {
-         if (msg.action === "startConverter") {
-            logger("▶️ startConverter");
-            initInspector((el) => {
-               const rect = el.getBoundingClientRect();
-               const popoverWidth = 400;
-               const popoverHeight = 400;
+      // 콜백 타입을 공식 시그니처에서 직접 추론
+      const listener: Parameters<typeof chrome.runtime.onMessage.addListener>[0] = (message) => {
+         const openPopover = (
+            el: HTMLElement,
+            mode: "converter" | "tester",
+            width: number,
+            height: number
+         ) => {
+            const rect = el.getBoundingClientRect();
+            const top = rect.bottom + 8;
+            const left = rect.left + rect.width / 2 - width / 2;
 
-               const top = rect.bottom + 8;
-               const left = rect.left + rect.width / 2 - popoverWidth / 2;
+            setPos({ top, left });
+            setTarget(el);
+            setModeProps({ mode, width, height });
 
-               setPos({ top, left });
-               setTarget(el);
-               setModeProps({ mode: "converter", width: popoverWidth, height: popoverHeight });
+            iframe.style.display = "block";
+            iframe.style.pointerEvents = "auto";
+         };
 
-               iframe.style.display = "block";
-               iframe.style.pointerEvents = "auto";
-            });
+         const handleStart = (mode: "converter" | "tester", width: number, height: number) => {
+            logger(`▶️ start${mode[0].toUpperCase() + mode.slice(1)}`);
+            initInspector((el) => openPopover(el, mode, width, height));
+         };
+
+         switch (message?.action) {
+            case "startConverter":
+               handleStart("converter", 400, 400);
+               break;
+            case "startTester":
+               handleStart("tester", 400, 430);
+               break;
          }
-
-         if (msg.action === "startTester") {
-            logger("▶️ startTester");
-            initInspector((el) => {
-               const rect = el.getBoundingClientRect();
-               const popoverWidth = 400;
-               const popoverHeight = 430;
-
-               const top = rect.bottom + 8;
-               const left = rect.left + rect.width / 2 - popoverWidth / 2;
-
-               setPos({ top, left });
-               setTarget(el);
-               setModeProps({ mode: "tester", width: popoverWidth, height: popoverHeight });
-
-               iframe.style.display = "block";
-               iframe.style.pointerEvents = "auto";
-            });
-         }
+         return true;
       };
 
       chrome.runtime.onMessage.addListener(listener);
+
       return () => chrome.runtime.onMessage.removeListener(listener);
    }, []);
 

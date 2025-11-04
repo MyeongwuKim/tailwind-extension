@@ -27,7 +27,10 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
    }
 
    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") stopInspector();
+      if (e.key === "Escape") {
+         stopInspector();
+         removeInspectorInfo();
+      }
    }
 
    function handleClick(e: MouseEvent) {

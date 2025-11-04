@@ -290,6 +290,21 @@ function convertSingleProp(prop: string, value: string): string | null {
       if (value === "center") return "items-center";
    }
 
+   if (prop === "flex-direction") {
+      switch (value) {
+         case "row":
+            return "flex-row";
+         case "row-reverse":
+            return "flex-row-reverse";
+         case "column":
+            return "flex-col";
+         case "column-reverse":
+            return "flex-col-reverse";
+         default:
+            return `flex-[${value}]`;
+      }
+   }
+
    // ----- Sizing -----
    if (prop === "width") {
       if (isZero(value)) return "w-0";
@@ -580,6 +595,7 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
 
    Layout: [
       /^flex$/,
+      /^flex-/,
       /^grid$/,
       /^inline/,
       /^block$/,
@@ -601,8 +617,6 @@ const CATEGORY_RULES: Record<Category, RegExp[]> = {
       /^overscroll-/,
       /^isolate$/,
       /^isolation-/,
-      // ✅ arbitrary 확장
-      /^flex-direction-\[/,
    ],
    Effects: [
       /^shadow(-|\[|$)/,

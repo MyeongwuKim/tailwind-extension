@@ -1,69 +1,62 @@
-# React + TypeScript + Vite
+# Tailwind Extention(크롬 익스텐션) (1인개발)
+> React+Tailwind+Vite 크롬 익스텐션 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+🔗 **Deployment URL**  
 
-Currently, two official plugins are available:
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 📌 Summary
+- Tailwind CSS를 기반으로 한 **웹 스타일 변환 크롬 익스텐션**
+- **Vite + React + TypeScript** 기반으로 멀티 엔트리(`vite.content.config.ts`, `vite.config.ts`) 구성
+- **DOM 요소 선택 → Tailwind 클래스로 변환 및 테스트** 기능 제공
+- **Fuse.js 기반 자동 완성 검색**, **Color Picker** 등 풍부한 기능 지원
+- **iframe 기반 격리 환경**에서 UI를 안정적으로 렌더링
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📖 Background
+평소 사이드 프로젝트를 진행할 때, 저는 다른 웹사이트의 디자인이나 CSS 구조를 참고해
+Tailwind CSS로 다시 구현하는 과정을 자주 거칩니다.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+그런데 매번 개발자 도구를 열고 특정 엘리먼트를 클릭해 스타일을 확인한 뒤, 직접 Tailwind 클래스로 바꾸는 과정이 꽤 번거롭고 귀찮았습니다.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+시간도 많이 들고, 같은 작업을 반복하는 게 아까워서 “이 과정을 자동으로 변환해주는 도구가 있다면 얼마나 편할까?” 그 단순한 생각 하나로 이번 프로젝트를 시작했습니다.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+만들고자 한 익스텐션은 웹페이지의 요소를 클릭하면 해당 요소의 CSS 속성을 자동으로 추출하고, 그 값을 Tailwind 클래스 형태로 근사 매칭해서 보여줍니다.
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+단순히 스타일을 복사하는 수준을 넘어, **Tailwind 기반으로 빠르게 UI를 재현하고 실험할 수 있는 환경**을 만드는 것이 목표였습니다.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+또한 개발 과정에서 자주 테스트해야 하는 `hover`, `focus`, `active` 같은 상태들도 매번 브라우저에서 직접 조작하는 게 불편해서, **UI 테스터 기능**을 따로 만들어 한 번에 전환하고 비교할 수 있도록 구현했습니다.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+이 프로젝트를 통해 반복적인 스타일 작업의 효율을 높이고, 디자인 테스트 속도를 크게 단축할 수 있는 Tailwind 전용 익스텐션을 완성했습니다. 단순한 편의 기능을 넘어, 앞으로 진행할 프로젝트에서도 개발 효율을 높여줄 좋은 시도였습니다.
+
+---
+
+## 💡 What I Learned
+이번 프로젝트는 단순히 기능을 구현하는 데서 그치지 않고,
+
+**크롬 익스텐션 구조와 웹 환경에서의 스타일 처리 방식**을 직접 이해하고 다뤄볼 수 있었던 경험이었습니다.
+
+가장 먼저 마주한 어려움은 **Vite 설정**이었습니다.
+
+`content script`, `background`, `popup` 등 여러 진입점이 필요해 각 환경에 맞게 설정을 분리하고,
+
+빌드 과정에서 발생하는 충돌을 해결해야 했습니다.
+
+다음으로 까다로웠던 부분은 **CSS를 Tailwind 클래스로 변환하는 로직**이었습니다. `getComputedStyle()`로 얻은 실제 스타일 값을 Tailwind의 스케일 단위에 맞게 근사 매핑해야 했고, 이를 위해 `tailwind.json` 덤프 파일을 생성해 참조하는 방식을 사용했습니다. 
+
+하지만 이 파일이 불필요하게 커지는 문제가 있었기 때문에, 사용하지 않는 색상·폰트·gradient 관련 데이터를 덜어내 최적화했습니다. 그 과정에서 성능과 정확도 사이의 균형을 맞추는 게 특히 까다로웠습니다.
+
+이 과정은 꽤 실험적인 도전이었지만, Tailwind를 단순히 사용하는 수준을 넘어서, “어떻게 동작하는지”를 직접 다뤄보며 감을 잡을 수 있었습니다. 또한 `hover`, `focus`, `active` 같은 상태를 코드로 시뮬레이션하며 UI를 실험적으로 제어하는 과정도 매우 흥미로웠습니다.
+
+크롬 익스텐션 + vite, 둘다 처음 진행했던 영역이였지만 재미 있었고 앞으로 사이드 프로젝트를 만들 때 약간이나마 도움이 될 거라 생각하니 진행하면서 기분이 좋은 프로젝트 였습니다.
+---
+
+## 🛠 Technology Stack
+- **Frontend:** React,Tailwind
+- **Build Tool / Bundler:** Vite
+
+---
+
+## ⚙️ Setup & Usage
+

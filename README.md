@@ -64,8 +64,8 @@ UI 단위 테스트 환경을 브라우저에서 직접 구축할 수 있었습�
 
 ### 1) Tailwind Converter
 
-Tailwind 변환 기능을 만들면서 가장 먼저 부딪힌 문제는
-getComputedStyle()이 반환하는 스타일 값이 너무 많아
+Tailwind 변환 기능을 만들면서 가장 먼저 부딪힌 문제는 단순하게
+getComputedStyle()를 통해서 Tailwind로 변환하려했으나 반환하는 스타일 값이 너무 많아
 그 모든 속성을 Tailwind로 직접 변환하는 것이 현실적으로 불가능했다는 점이었습니다.
 
 게다가 CSS 값과 Tailwind 스케일은 절대 1:1로 매칭되지 않기 때문에,

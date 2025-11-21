@@ -4,6 +4,7 @@
    "version": "0.0.0",
    "type": "module",
    "scripts": {
+      "clean": "rm -rf dist",
       "meta:generate": "tsx scripts/gen-tw-meta.ts full && tsx scripts/gen-tw-tokens.ts",
       "meta:fix": "node lib/fix-variant-order.js",
       "meta:build": "npm run meta:generate && npm run meta:fix && npx tailwindcss -c ./scripts/tailwind.meta.config.js -i ./src/tw-meta.entry.css -o ./src/tw-meta.built.css --minify",

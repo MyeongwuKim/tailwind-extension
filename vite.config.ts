@@ -33,7 +33,7 @@ export default defineConfig(({ command }) => {
       publicDir: "../public",
       build: {
          outDir: "../dist",
-         emptyOutDir: true,
+         emptyOutDir: false,
          rollupOptions: {
             input: {
                popup: resolve(__dirname, "src/popup/index.html"),

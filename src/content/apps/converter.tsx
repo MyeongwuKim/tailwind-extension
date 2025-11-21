@@ -47,10 +47,7 @@ export default function ConverterPopover({ target }: { target: HTMLElement }) {
          <div className="ex-tw-p-4">
             <div className="ex-tw-gap-4">
                <div id="tailwindClasses-area">
-                  <div
-                     className="ex-tw-text-base ex-tw-leading-relaxed ex-tw-text-gray-500 
-                               dark:ex-tw-text-gray-400 ex-tw-break-words"
-                  >
+                  <div className="ex-tw-text-base ex-tw-leading-relaxed ex-tw-text-text2 ex-tw-break-words">
                      {tailwindStyles}
                   </div>
                   <div className="ex-tw-flex ex-tw-justify-end ex-tw-mt-4">
@@ -68,7 +65,7 @@ export default function ConverterPopover({ target }: { target: HTMLElement }) {
                               </h3>
                               <div className="ex-tw-mt-2 ex-tw-flex ex-tw-gap-2 ex-tw-flex-wrap">
                                  {classCategory[category].length <= 0 ? (
-                                    <span className="ex-tw-text-base ex-tw-text-gray-500 dark:ex-tw-text-gray-400">
+                                    <span className="ex-tw-text-base ex-tw-text-text2">
                                        No Class List
                                     </span>
                                  ) : (

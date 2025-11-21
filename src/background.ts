@@ -1,4 +1,13 @@
+import { INITIAL_CONFIG } from "./constants/define";
+
 let inspectorEnabled = false;
+
+chrome.runtime.onInstalled.addListener(() => {
+   chrome.storage.local.set({
+      enabled: false,
+      ...INITIAL_CONFIG,
+   });
+});
 
 chrome.runtime.onMessage.addListener((msg) => {
    if (msg.action === "toggle") {
@@ -22,6 +31,12 @@ chrome.runtime.onMessage.addListener((msg) => {
       }
    } else if (msg.action == "log") {
       console.log(msg.payload);
+   } else if (msg.action === "changeOverlayColor") {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+         const tab = tabs[0];
+         if (!tab?.id) return;
+         chrome.tabs.sendMessage(tab.id, msg); // ★ 현재탭 content script로 전달
+      });
    }
 });
 

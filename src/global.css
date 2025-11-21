@@ -40,3 +40,37 @@
    --color-text5: #4be7fb;
    --color-border1: #4d4d4d;
 }
+.slider-hue {
+   background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+   border-radius: 9999px;
+}
+
+.slider-hue::-webkit-slider-thumb {
+   -webkit-appearance: none;
+   appearance: none;
+   width: 16px;
+   height: 16px;
+   border-radius: 50%;
+   background: white;
+   border: 2px solid #aaa;
+   cursor: pointer;
+}
+
+.slider-alpha {
+   background:
+    /* 투명→불투명 색 그라디언트 */
+      linear-gradient(to right, rgba(var(--rgb), 0), rgba(var(--rgb), 1)),
+      /* 바둑판 패턴 */ repeating-conic-gradient(#ccc 0% 25%, #eee 0% 50%) 0 / 12px 12px;
+   border-radius: 9999px;
+}
+
+.slider-alpha::-webkit-slider-thumb {
+   -webkit-appearance: none;
+   appearance: none;
+   width: 16px;
+   height: 16px;
+   border-radius: 50%;
+   background: white;
+   border: 2px solid #aaa;
+   cursor: pointer;
+}

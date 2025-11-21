@@ -1,8 +1,41 @@
+import { INITIAL_CONFIG } from "../constants/define";
 import { logger } from "../hooks/useUtils";
 
 let overlay: HTMLDivElement | null = null;
 let label: HTMLDivElement | null = null;
 let blocker: HTMLDivElement | null = null;
+let colorProps = INITIAL_CONFIG;
+
+function hexToRgb(hex: string) {
+   hex = hex.replace("#", "");
+
+   // 3자리 (#fff) → 6자리로 확장
+   if (hex.length === 3) {
+      hex = hex
+         .split("")
+         .map((c) => c + c)
+         .join("");
+   }
+
+   const r = parseInt(hex.substring(0, 2), 16);
+   const g = parseInt(hex.substring(2, 4), 16);
+   const b = parseInt(hex.substring(4, 6), 16);
+
+   return { r, g, b };
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+   if (area !== "local") return;
+
+   if (changes.overlayBorder) {
+      const newBorder = changes.overlayBorder.newValue;
+      colorProps.overlayBorder = newBorder;
+   }
+   if (changes.overlayBg) {
+      const newBg = changes.overlayBg.newValue;
+      colorProps.overlayBg = newBg;
+   }
+});
 
 export function removeInspectorInfo() {
    overlay?.remove();
@@ -60,12 +93,14 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
    function showOverlay(rect: DOMRect, el: HTMLElement) {
       if (!overlay) {
          overlay = document.createElement("div");
+         const bg_rgb = hexToRgb(colorProps.overlayBg);
+         const border_rgb = hexToRgb(colorProps.overlayBorder);
          Object.assign(overlay.style, {
             position: "absolute",
             zIndex: "999999",
             pointerEvents: "none",
-            border: "2px solid magenta",
-            background: "rgba(255,0,255,0.1)",
+            border: `2px solid rgba(${border_rgb.r},${border_rgb.g},${border_rgb.b},1)`,
+            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},0.1)`,
          });
          document.body.appendChild(overlay);
       }

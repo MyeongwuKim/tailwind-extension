@@ -11,7 +11,7 @@ export default defineConfig({
    },
    build: {
       outDir: "dist",
-      emptyOutDir: false, // ✅ 다른 결과물 유지
+      emptyOutDir: true,
       lib: {
          entry: resolve(__dirname, "src/content/index.tsx"),
          formats: ["iife"],

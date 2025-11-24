@@ -75,12 +75,59 @@ export function App() {
    const [dragging, setDragging] = useState(false);
    const dragOffset = useRef({ x: 0, y: 0 });
 
+   const reset = () => {
+      setModeProps({ mode: null, width: 0, height: 0 });
+      setTarget(null);
+      setPos(null);
+      removeInspectorInfo();
+      iframe.style.display = "none";
+      iframe.style.pointerEvents = "none";
+   };
+
+   // 첫 로드 시 storage에서 값 복원
+   useEffect(() => {
+      chrome.storage.local.get(["darkMode"], (res) => {
+         if (!!res.darkMode) {
+            iframeDoc.documentElement.classList.add("dark");
+            iframeDoc.documentElement.classList.add("ex-tw-dark");
+         } else {
+            iframeDoc.documentElement.classList.remove("dark");
+            iframeDoc.documentElement.classList.remove("ex-tw-dark");
+         }
+      });
+   }, []);
+
+   function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+         reset();
+      }
+   }
+
+   //Key 등록
+   useEffect(() => {
+      document.addEventListener("keydown", handleKeyDown, true);
+      return () => {
+         document.removeEventListener("keydown", handleKeyDown, true);
+      };
+   }, []);
    /* ==================================================================================
      background → 메시지 수신
   ================================================================================== */
    useEffect(() => {
-      // 콜백 타입을 공식 시그니처에서 직접 추론
       const listener: Parameters<typeof chrome.runtime.onMessage.addListener>[0] = (message) => {
+         if (message?.action == "darkMode") {
+            if (message.darkMode) {
+               iframeDoc.documentElement.classList.add("dark");
+               iframeDoc.documentElement.classList.add("ex-tw-dark");
+            } else {
+               iframeDoc.documentElement.classList.remove("dark");
+               iframeDoc.documentElement.classList.remove("ex-tw-dark");
+            }
+            return;
+         } else if (message?.action == "disEnabled") {
+            reset();
+            return;
+         }
          const openPopover = (
             el: HTMLElement,
             mode: "converter" | "tester",
@@ -208,14 +255,7 @@ export function App() {
          <div
             id="tw-popup-panel"
             className="ex-tw-absolute ex-tw-bg-transparent ex-tw-z-[2147483645] ex-tw-w-full ex-tw-h-full"
-            onMouseDown={() => {
-               setModeProps({ mode: null, width: 0, height: 0 });
-               setTarget(null);
-               setPos(null);
-               removeInspectorInfo();
-               iframe.style.display = "none";
-               iframe.style.pointerEvents = "none";
-            }}
+            onMouseDown={reset}
          />
 
          {/* 팝업 본체 */}

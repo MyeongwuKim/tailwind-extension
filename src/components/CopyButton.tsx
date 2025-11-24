@@ -29,7 +29,7 @@ export default function CopyButton({
          onClick={handleCopy}
          className={`ex-tw-flex ex-tw-items-center ex-tw-justify-center ex-tw-text-center 
             ex-tw-font-medium ex-tw-gap-2 ex-tw-focus:outline-none ex-tw-focus:ring-4 
-            ex-tw-h-10 ex-tw-px-5 ex-tw-text-lg ex-tw-rounded-lg ex-tw-border 
+            ex-tw-h-10 ex-tw-px-5 ex-tw-text-lg ex-tw-rounded-lg 
             ex-tw-bg-slate-600 ex-tw-text-white hover:ex-tw-bg-slate-700 ex-tw-focus:ring-slate-300
             dark:ex-tw-bg-slate-500 dark:hover:ex-tw-bg-slate-600 dark:ex-tw-focus:ring-slate-800
             ${className}`}

@@ -1,15 +1,19 @@
+//background에서 돌면서 Listen을 함 (각종 이벤트 처리해주는 미들웨어)
 import { INITIAL_CONFIG } from "./constants/define";
 
 let inspectorEnabled = false;
 
 chrome.runtime.onInstalled.addListener(() => {
+   console.log("install");
    chrome.storage.local.set({
-      enabled: false,
+      enabled: true,
+      darkMode: false,
       ...INITIAL_CONFIG,
    });
 });
 
-chrome.runtime.onMessage.addListener((msg) => {
+//메인 리스너(각종 이벤트처리)
+chrome.runtime.onMessage.addListener((msg): any => {
    if (msg.action === "toggle") {
       inspectorEnabled = msg.enabled;
 
@@ -28,14 +32,19 @@ chrome.runtime.onMessage.addListener((msg) => {
       } else {
          // ✅ 메뉴 제거
          chrome.contextMenus.removeAll();
+         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            const tab = tabs[0];
+            if (!tab?.id) return;
+            chrome.tabs.sendMessage(tab.id, { action: "disEnabled" });
+         });
       }
    } else if (msg.action == "log") {
       console.log(msg.payload);
-   } else if (msg.action === "changeOverlayColor") {
+   } else if (msg.action == "darkMode") {
       chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
          const tab = tabs[0];
          if (!tab?.id) return;
-         chrome.tabs.sendMessage(tab.id, msg); // ★ 현재탭 content script로 전달
+         chrome.tabs.sendMessage(tab.id, { action: "darkMode", darkMode: msg.darkMode }); // ★ 현재탭 content script로 전달
       });
    }
 });

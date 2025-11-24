@@ -1,6 +1,7 @@
 export default {
    prefix: "ex-tw-",
-   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx,css}"],
+   darkMode: "class",
+   content: ["./index.html", "./src/**/*"],
    theme: {
       extend: {
          fontFamily: {
@@ -8,6 +9,7 @@ export default {
          },
          colors: {
             background1: "var(--color-background1)",
+            background2: "var(--color-background2)",
             text1: "var(--color-text1)",
             text2: "var(--color-text2)",
             text3: "var(--color-text3)",

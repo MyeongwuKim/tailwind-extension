@@ -339,12 +339,15 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
                {tags.map((tag) => (
                   <div
                      key={tag}
-                     className="ex-tw-flex ex-tw-items-center ex-tw-gap-1 ex-tw-bg-gray-100 ex-tw-text-gray-700 ex-tw-px-2 ex-tw-py-1 ex-tw-rounded-md ex-tw-text-sm hover:ex-tw-bg-gray-200"
+                     className={`ex-tw-flex ex-tw-items-center ex-tw-gap-1 ex-tw-border ex-tw-border-gray-300 
+            ex-tw-bg-white ex-tw-text-text2 
+            dark:ex-tw-border-gray-600 dark:ex-tw-bg-gray-800  ex-tw-py-1
+            ex-tw-rounded-md ex-tw-transition-colors ex-tw-duration-150 ex-tw-text-sm ex-tw-px-2`}
                   >
                      <span>{tag}</span>
                      <button
                         onClick={() => removeTag(tag)}
-                        className="ex-tw-text-gray-400 hover:ex-tw-text-red-500"
+                        className=" ex-tw-text-text2  hover:ex-tw-text-text5"
                      >
                         ✕
                      </button>

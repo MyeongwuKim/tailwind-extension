@@ -2,7 +2,37 @@
 @tailwind components;
 @tailwind utilities;
 
-/* react-colorful 기본 대체 스타일 */
+/* =============== Light scrollbar =============== */
+.ex-tw-overflow-auto::-webkit-scrollbar {
+   width: 8px;
+}
+
+.ex-tw-overflow-auto::-webkit-scrollbar-thumb {
+   background: #c1c1c1;
+   border-radius: 4px;
+}
+
+.ex-tw-overflow-auto::-webkit-scrollbar-track {
+   background: transparent;
+}
+
+/* =============== Dark scrollbar =============== */
+/* iframe html 에 dark + ex-tw-dark 둘 다 붙이니까 이렇게 */
+html.dark .ex-tw-overflow-auto::-webkit-scrollbar,
+html.ex-tw-dark .ex-tw-overflow-auto::-webkit-scrollbar {
+   width: 8px;
+}
+
+html.dark .ex-tw-overflow-auto::-webkit-scrollbar-thumb,
+html.ex-tw-dark .ex-tw-overflow-auto::-webkit-scrollbar-thumb {
+   background: #4b5563; /* slate-600 */
+}
+
+html.dark .ex-tw-overflow-auto::-webkit-scrollbar-track,
+html.ex-tw-dark .ex-tw-overflow-auto::-webkit-scrollbar-track {
+   background: #1f2937; /* gray-800 */
+}
+
 .react-colorful {
    width: 100%;
    height: 150px;
@@ -23,6 +53,7 @@
 
 :root {
    --color-background1: #fff;
+   --color-background2: #f8f9fa;
    --color-text1: #212529;
    --color-text2: #495057;
    --color-text3: #868e96;
@@ -33,6 +64,7 @@
 
 :root.dark {
    --color-background1: #374151;
+   --color-background2: #121212;
    --color-text1: #ececec;
    --color-text2: #d9d9d9;
    --color-text3: #acacac;

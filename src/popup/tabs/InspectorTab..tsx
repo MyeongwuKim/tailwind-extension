@@ -8,6 +8,7 @@ export default function InspectorTab() {
    const [overlayBg, setOverlayBg] = useState("#ffffff");
    const [overlayBgOpacity, setOverlayBgOpacity] = useState(1);
 
+   // --- 초기값 로드 ---
    useEffect(() => {
       chrome.storage.local.get(
          ["overlayBorder", "overlayBorderOpacity", "overlayBg", "overlayBgOpacity"],
@@ -22,22 +23,37 @@ export default function InspectorTab() {
       );
    }, []);
 
+   // --- 상태 → 스토리지 자동 동기화 ---
+   useEffect(() => {
+      chrome.storage.local.set({ overlayBorder });
+   }, [overlayBorder]);
+
+   useEffect(() => {
+      chrome.storage.local.set({ overlayBorderOpacity });
+   }, [overlayBorderOpacity]);
+
+   useEffect(() => {
+      chrome.storage.local.set({ overlayBg });
+   }, [overlayBg]);
+
+   useEffect(() => {
+      chrome.storage.local.set({ overlayBgOpacity });
+   }, [overlayBgOpacity]);
+
    return (
       <div className="ex-tw-flex ex-tw-flex-col ex-tw-gap-4 ex-tw-p-2">
+         <h1 className="ex-tw-font-semibold ex-tw-text-text1 ex-tw-text-base">
+            인스펙터의 컬러값을 변경합니다.
+         </h1>
+
          {/* Border */}
          <div>
             <h3 className="ex-tw-font-semibold ex-tw-text-text2 ex-tw-mb-2">Border</h3>
             <ColorBoxControl
                color={overlayBorder}
                opacity={overlayBorderOpacity}
-               onColorChange={(c) => {
-                  setOverlayBorder(c);
-                  chrome.storage.local.set({ overlayBorder: c });
-               }}
-               onOpacityChange={(v) => {
-                  setOverlayBorderOpacity(v);
-                  chrome.storage.local.set({ overlayBorderOpacity: v });
-               }}
+               onColorChange={setOverlayBorder}
+               onOpacityChange={setOverlayBorderOpacity}
             />
          </div>
 
@@ -47,14 +63,8 @@ export default function InspectorTab() {
             <ColorBoxControl
                color={overlayBg}
                opacity={overlayBgOpacity}
-               onColorChange={(c) => {
-                  setOverlayBg(c);
-                  chrome.storage.local.set({ overlayBg: c });
-               }}
-               onOpacityChange={(v) => {
-                  setOverlayBgOpacity(v);
-                  chrome.storage.local.set({ overlayBgOpacity: v });
-               }}
+               onColorChange={setOverlayBg}
+               onOpacityChange={setOverlayBgOpacity}
             />
          </div>
       </div>

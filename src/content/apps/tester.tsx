@@ -220,7 +220,7 @@ export default function TesterPopover({
          }}
          className="ex-tw-absolute ex-tw-rounded-md ex-tw-w-full ex-tw-h-full ex-tw-font-inter 
               ex-tw-border-border1 ex-tw-border-2 ex-tw-overflow-auto 
-              ex-tw-bg-background1 ex-tw-shadow-lg
+              ex-tw-bg-background2 ex-tw-shadow-lg
               ex-tw-transition-transform ex-tw-duration-150"
          style={{ zIndex: 9999 }}
       >

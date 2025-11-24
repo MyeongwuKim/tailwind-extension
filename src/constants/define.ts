@@ -3,8 +3,8 @@ export const INITIAL_CONFIG = {
    overlayBg: "#ff00ff",
    overlayBorderOpacity: 1,
    overlayBgOpacity: 0.1,
-   labelText: "#fff",
+   labelText: "#ffffff",
    labelBg: "#000000",
    labelTextOpacity: 1,
-   labelBgOpacity: 0.1,
+   labelBgOpacity: 1,
 };

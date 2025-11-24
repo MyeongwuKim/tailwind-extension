@@ -2,7 +2,7 @@
    "manifest_version": 3,
    "name": "Tailwind Chrome Extension",
    "version": "1.0.0",
-   "description": "TailwindCSS 기반 React 크롬 확장 프로그램",
+   "description": "CSS를 Tailwind 클래스로 변환하고, UI를 실시간으로 테스트할 수 있는 Tailwind 전용 크롬 확장 프로그램",
    "action": {
       "default_popup": "popup/index.html"
    },

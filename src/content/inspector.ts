@@ -1,27 +1,49 @@
 import { INITIAL_CONFIG } from "../constants/define";
-import { logger } from "../hooks/useUtils";
+import { logger, hexToRgb } from "../hooks/useUtils";
 
 let overlay: HTMLDivElement | null = null;
 let label: HTMLDivElement | null = null;
 let blocker: HTMLDivElement | null = null;
 let colorProps = INITIAL_CONFIG;
 
-function hexToRgb(hex: string) {
-   hex = hex.replace("#", "");
+chrome.storage.local.get(
+   [
+      "overlayBorder",
+      "overlayBg",
+      "overlayBorderOpacity",
+      "overlayBgOpacity",
+      "labelText",
+      "labelBg",
+      "labelTextOpacity",
+      "labelBgOpacity",
+   ],
+   (res) => {
+      colorProps = {
+         ...INITIAL_CONFIG,
+         ...res, // 저장된 값으로 덮어쓰기
+      };
 
-   // 3자리 (#fff) → 6자리로 확장
-   if (hex.length === 3) {
-      hex = hex
-         .split("")
-         .map((c) => c + c)
-         .join("");
+      // 이미 overlay가 있다면 즉시 업데이트
+      updateStyles();
+   }
+);
+
+function updateStyles() {
+   if (overlay) {
+      const bg = hexToRgb(colorProps.overlayBg);
+      const border = hexToRgb(colorProps.overlayBorder);
+
+      overlay.style.background = `rgba(${bg.r},${bg.g},${bg.b},${colorProps.overlayBgOpacity})`;
+      overlay.style.border = `2px solid rgba(${border.r},${border.g},${border.b},${colorProps.overlayBorderOpacity})`;
    }
 
-   const r = parseInt(hex.substring(0, 2), 16);
-   const g = parseInt(hex.substring(2, 4), 16);
-   const b = parseInt(hex.substring(4, 6), 16);
+   if (label) {
+      const bg = hexToRgb(colorProps.labelBg);
+      const text = hexToRgb(colorProps.labelText);
 
-   return { r, g, b };
+      label.style.background = `rgba(${bg.r},${bg.g},${bg.b},${colorProps.labelBgOpacity})`;
+      label.style.color = `rgba(${text.r},${text.g},${text.b},${colorProps.labelTextOpacity})`;
+   }
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -35,6 +57,34 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const newBg = changes.overlayBg.newValue;
       colorProps.overlayBg = newBg;
    }
+
+   if (changes.overlayBorderOpacity) {
+      const newBorder = changes.overlayBorderOpacity.newValue;
+      colorProps.overlayBorderOpacity = newBorder;
+   }
+   if (changes.overlayBgOpacity) {
+      const newBg = changes.overlayBgOpacity.newValue;
+      colorProps.overlayBgOpacity = newBg;
+   }
+
+   if (changes.labelText) {
+      const newBorder = changes.labelText.newValue;
+      colorProps.labelText = newBorder;
+   }
+   if (changes.labelTextOpacity) {
+      const newBg = changes.labelTextOpacity.newValue;
+      colorProps.labelTextOpacity = newBg;
+   }
+   if (changes.labelBg) {
+      const newBorder = changes.labelBg.newValue;
+      colorProps.labelBg = newBorder;
+   }
+   if (changes.labelBgOpacity) {
+      const newBg = changes.labelBgOpacity.newValue;
+      colorProps.labelBgOpacity = newBg;
+   }
+
+   updateStyles();
 });
 
 export function removeInspectorInfo() {
@@ -99,8 +149,8 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
             position: "absolute",
             zIndex: "999999",
             pointerEvents: "none",
-            border: `2px solid rgba(${border_rgb.r},${border_rgb.g},${border_rgb.b},1)`,
-            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},0.1)`,
+            border: `2px solid rgba(${border_rgb.r},${border_rgb.g},${border_rgb.b},${colorProps.overlayBorderOpacity})`,
+            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.overlayBgOpacity})`,
          });
          document.body.appendChild(overlay);
       }
@@ -112,17 +162,22 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
       });
 
       if (!label) {
+         const bg_rgb = hexToRgb(colorProps.labelBg);
+         const text_rgb = hexToRgb(colorProps.labelText);
+
          label = document.createElement("div");
          Object.assign(label.style, {
             position: "absolute",
             zIndex: "1000000",
             fontFamily: "monospace",
             fontSize: "14px",
-            color: "#fff",
-            background: "rgba(0,0,0,0.8)",
+            color: `rgba(${text_rgb.r},${text_rgb.g},${text_rgb.b},${colorProps.labelTextOpacity})`,
+            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.labelBgOpacity})`,
             padding: "2px 5px",
             borderRadius: "3px",
-            whiteSpace: "nowrap", // 긴 텍스트 한 줄로
+            maxWidth: "300px", // ⚡ 최대 너비 지정
+            whiteSpace: "normal", // ⚡ 줄바꿈 가능하게
+            wordBreak: "break-all", // ⚡ 긴 className도 잘 잘림
          });
          document.body.appendChild(label);
       }

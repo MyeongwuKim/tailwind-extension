@@ -285,3 +285,14 @@ npm run build
 ```
 
 익스텐션은 `dist/` 폴더를 Chrome 확장 프로그램에 로드하여 실행할 수 있습니다.
+
+## 📝 Changelog
+
+### v1.0.1
+- macOS 환경에서 iframe 배경이 하얗게 표시되던 문제 수정
+- 익스텐션 설치 직후 바로 사용할 수 있도록 개선
+
+### v1.0.0
+- 초기 릴리즈
+- CSS → Tailwind 변환 기능
+- Tailwind Tester (hover / active 시뮬레이션)

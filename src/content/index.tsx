@@ -50,6 +50,7 @@ function createInspectorIframe() {
     * { box-sizing: border-box; }
   `;
    iframeDoc.head.appendChild(resetEl);
+   iframe.style.colorScheme = "auto"; // 맥에서 iframe배경이 하얗던 오류 수정
 
    const mountEl = iframeDoc.createElement("div");
    iframeDoc.body.appendChild(mountEl);

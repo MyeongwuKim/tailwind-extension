@@ -4,7 +4,7 @@
 
 ---
 
-## 📌 TL;DR
+## 📌 Overview
 
 - **Chrome Extension (Manifest V3)** 기반 Tailwind 변환/테스트 도구
 - 페이지 요소 선택 시 computed style을 읽어 **Tailwind 클래스 자동 변환**
@@ -86,4 +86,3 @@ npm run lint
 ```
 
 빌드 후 `dist/`를 Chrome 확장 프로그램 개발자 모드에서 로드해 사용합니다.
-

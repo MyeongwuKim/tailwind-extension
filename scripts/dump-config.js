@@ -12,8 +12,9 @@ const minimalTheme = {
       boxShadow: fullConfig.theme.boxShadow,
       borderWidth: fullConfig.theme.borderWidth,
       padding: fullConfig.theme.padding,
+      colors: fullConfig.theme.colors,
    },
 };
 
 fs.writeFileSync("./src/full-config.json", JSON.stringify(minimalTheme, null, 2));
-console.log("✅ Minimal Tailwind config dumped (no color data)");
+console.log("✅ Minimal Tailwind config dumped (with color data)");

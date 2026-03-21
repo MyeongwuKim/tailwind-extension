@@ -94,6 +94,80 @@ export function removeInspectorInfo() {
    label = null;
 }
 
+function ensureOverlay() {
+   if (overlay) return overlay;
+   overlay = document.createElement("div");
+   const bg_rgb = hexToRgb(colorProps.overlayBg);
+   const border_rgb = hexToRgb(colorProps.overlayBorder);
+   Object.assign(overlay.style, {
+      position: "absolute",
+      zIndex: "999999",
+      pointerEvents: "none",
+      border: `2px solid rgba(${border_rgb.r},${border_rgb.g},${border_rgb.b},${colorProps.overlayBorderOpacity})`,
+      background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.overlayBgOpacity})`,
+   });
+   document.body.appendChild(overlay);
+   return overlay;
+}
+
+function ensureLabel() {
+   if (label) return label;
+
+   const bg_rgb = hexToRgb(colorProps.labelBg);
+   const text_rgb = hexToRgb(colorProps.labelText);
+
+   label = document.createElement("div");
+   Object.assign(label.style, {
+      position: "absolute",
+      zIndex: "1000000",
+      fontFamily: "monospace",
+      fontSize: "14px",
+      color: `rgba(${text_rgb.r},${text_rgb.g},${text_rgb.b},${colorProps.labelTextOpacity})`,
+      background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.labelBgOpacity})`,
+      padding: "2px 5px",
+      borderRadius: "3px",
+      maxWidth: "300px",
+      whiteSpace: "normal",
+      wordBreak: "break-all",
+   });
+   document.body.appendChild(label);
+   return label;
+}
+
+function renderOverlay(rect: DOMRect, el: HTMLElement) {
+   const overlayEl = ensureOverlay();
+   Object.assign(overlayEl.style, {
+      top: `${rect.top + window.scrollY}px`,
+      left: `${rect.left + window.scrollX}px`,
+      width: `${rect.width}px`,
+      height: `${rect.height}px`,
+   });
+
+   const labelEl = ensureLabel();
+   const tag = el.tagName.toLowerCase();
+   const siblings = el.parentElement
+      ? Array.from(el.parentElement.children).filter((child) => child.tagName === el.tagName)
+      : [];
+   const index = siblings.indexOf(el);
+   const id = el.id ? `#${el.id}` : `#${index}`;
+   const classes = el.classList.length ? "." + Array.from(el.classList).join(".") : "";
+   labelEl.textContent = `${tag}${id}${classes}`;
+
+   const labelHeight = labelEl.offsetHeight || 20;
+   const top = rect.top + window.scrollY - labelHeight - 8;
+
+   Object.assign(labelEl.style, {
+      top: `${Math.max(top, 0)}px`,
+      left: `${rect.left + window.scrollX}px`,
+   });
+}
+
+export function updateInspectorTarget(el: HTMLElement) {
+   if (!el || !el.isConnected) return;
+   const rect = el.getBoundingClientRect();
+   renderOverlay(rect, el);
+}
+
 export function initInspector(setTarget: (el: HTMLElement) => void) {
    logger("initInspector (main doc)");
 
@@ -138,68 +212,7 @@ export function initInspector(setTarget: (el: HTMLElement) => void) {
          .find((n) => n !== blocker && n !== overlay && n !== label) as HTMLElement | undefined;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      showOverlay(rect, el);
-   }
-   function showOverlay(rect: DOMRect, el: HTMLElement) {
-      if (!overlay) {
-         overlay = document.createElement("div");
-         const bg_rgb = hexToRgb(colorProps.overlayBg);
-         const border_rgb = hexToRgb(colorProps.overlayBorder);
-         Object.assign(overlay.style, {
-            position: "absolute",
-            zIndex: "999999",
-            pointerEvents: "none",
-            border: `2px solid rgba(${border_rgb.r},${border_rgb.g},${border_rgb.b},${colorProps.overlayBorderOpacity})`,
-            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.overlayBgOpacity})`,
-         });
-         document.body.appendChild(overlay);
-      }
-      Object.assign(overlay.style, {
-         top: `${rect.top + window.scrollY}px`,
-         left: `${rect.left + window.scrollX}px`,
-         width: `${rect.width}px`,
-         height: `${rect.height}px`,
-      });
-
-      if (!label) {
-         const bg_rgb = hexToRgb(colorProps.labelBg);
-         const text_rgb = hexToRgb(colorProps.labelText);
-
-         label = document.createElement("div");
-         Object.assign(label.style, {
-            position: "absolute",
-            zIndex: "1000000",
-            fontFamily: "monospace",
-            fontSize: "14px",
-            color: `rgba(${text_rgb.r},${text_rgb.g},${text_rgb.b},${colorProps.labelTextOpacity})`,
-            background: `rgba(${bg_rgb.r},${bg_rgb.g},${bg_rgb.b},${colorProps.labelBgOpacity})`,
-            padding: "2px 5px",
-            borderRadius: "3px",
-            maxWidth: "300px", // ⚡ 최대 너비 지정
-            whiteSpace: "normal", // ⚡ 줄바꿈 가능하게
-            wordBreak: "break-all", // ⚡ 긴 className도 잘 잘림
-         });
-         document.body.appendChild(label);
-      }
-
-      const tag = el.tagName.toLowerCase();
-      const siblings = el.parentElement
-         ? Array.from(el.parentElement.children).filter((child) => child.tagName === el.tagName)
-         : [];
-      const index = siblings.indexOf(el);
-      const id = el.id ? `#${el.id}` : `#${index}`;
-      const classes = el.classList.length ? "." + Array.from(el.classList).join(".") : "";
-
-      label.textContent = `${tag}${id}${classes}`;
-
-      // ✅ label 높이 계산해서 그만큼 위로 올림
-      const labelHeight = label.offsetHeight || 20;
-      const top = rect.top + window.scrollY - labelHeight - 8; // 8px 여백
-
-      Object.assign(label.style, {
-         top: `${Math.max(top, 0)}px`, // 화면 위로 벗어나지 않게 보정
-         left: `${rect.left + window.scrollX}px`,
-      });
+      renderOverlay(rect, el);
    }
 
    blocker = document.createElement("div");

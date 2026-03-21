@@ -5,7 +5,7 @@ import ConverterPopover from "./apps/converter";
 import TesterPopover from "./apps/tester";
 import tailwindCss from "../tailwind.css?inline";
 import { injectFonts } from "../content/fontLoader";
-import { initInspector, removeInspectorInfo } from "../content/inspector";
+import { initInspector, removeInspectorInfo, updateInspectorTarget } from "../content/inspector";
 import { logger } from "../hooks/useUtils";
 
 /* ==================================================================================
@@ -262,8 +262,8 @@ export function App() {
          {/* 팝업 본체 */}
          <div
             id="tw-popup-container"
-            className="ex-tw-absolute ex-tw-bg-white ex-tw-rounded-2xl ex-tw-shadow-2xl 
-                   ex-tw-border ex-tw-border-gray-200 ex-tw-z-[2147483646]"
+            className="ex-tw-absolute ex-tw-bg-background1 ex-tw-rounded-2xl ex-tw-shadow-2xl 
+                   ex-tw-border ex-tw-border-border1 ex-tw-z-[2147483646]"
             style={{
                width: modeProps.width,
                height: modeProps.height,
@@ -272,8 +272,25 @@ export function App() {
                cursor: dragging ? "grabbing" : "default",
             }}
          >
-            {modeProps.mode === "converter" && <ConverterPopover target={target} />}
-            {modeProps.mode === "tester" && <TesterPopover target={target} iframeDoc={iframeDoc} />}
+            {modeProps.mode === "converter" && (
+               <ConverterPopover
+                  target={target}
+                  onTargetChange={(el) => {
+                     setTarget(el);
+                     updateInspectorTarget(el);
+                  }}
+               />
+            )}
+            {modeProps.mode === "tester" && (
+               <TesterPopover
+                  target={target}
+                  iframeDoc={iframeDoc}
+                  onTargetChange={(el) => {
+                     setTarget(el);
+                     updateInspectorTarget(el);
+                  }}
+               />
+            )}
          </div>
       </>
    );

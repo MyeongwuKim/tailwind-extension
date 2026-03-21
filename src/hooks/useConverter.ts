@@ -1,6 +1,15 @@
 import fullConfig from "../full-config.json";
 
 /* ========== Helpers ========== */
+type RGBA = { r: number; g: number; b: number; a: number };
+type Tolerance = { abs: number; ratio: number; maxAbs: number };
+type ConverterConfig = {
+   theme: {
+      colors?: unknown;
+      fontSize: Record<string, unknown>;
+   };
+};
+
 function remToPx(rem: string) {
    return `${parseFloat(rem) * 16}px`;
 }
@@ -9,17 +18,29 @@ function normalize(val: string) {
    return val;
 }
 function closest(px: number, map: Record<string, string>) {
+   if (!Number.isFinite(px)) return { key: null, diff: Infinity };
    let bestKey: string | null = null;
    let bestDiff = Infinity;
    for (const [val, key] of Object.entries(map)) {
       const num = parseFloat(val);
+      if (!Number.isFinite(num)) continue;
       const diff = Math.abs(px - num);
       if (diff < bestDiff) {
          bestDiff = diff;
          bestKey = key;
       }
    }
-   return bestKey;
+   return { key: bestKey, diff: bestDiff };
+}
+function withinTolerance(target: number, diff: number, tolerance: Tolerance) {
+   if (!Number.isFinite(target) || !Number.isFinite(diff)) return false;
+   const adaptive = Math.max(tolerance.abs, Math.abs(target) * tolerance.ratio);
+   return diff <= Math.min(tolerance.maxAbs, adaptive);
+}
+function pickClosestKey(px: number, map: Record<string, string>, tolerance: Tolerance) {
+   const { key, diff } = closest(px, map);
+   if (!key) return null;
+   return withinTolerance(px, diff, tolerance) ? key : null;
 }
 function isZero(val: string) {
    return val === "0" || val === "0px" || val === "0rem";
@@ -41,6 +62,172 @@ function normalizeColor(val: string) {
    return v;
 }
 
+const spacingTolerance: Tolerance = { abs: 0.75, ratio: 0.03, maxAbs: 1.5 };
+const sizeTolerance: Tolerance = { abs: 1, ratio: 0.04, maxAbs: 4 };
+const fontSizeTolerance: Tolerance = { abs: 0.6, ratio: 0.02, maxAbs: 1 };
+const radiusTolerance: Tolerance = { abs: 0.75, ratio: 0.04, maxAbs: 2 };
+
+const colorParseCache = new Map<string, RGBA | null>();
+let colorParserEl: HTMLSpanElement | null = null;
+let themeColorEntriesCache: { token: string; rgba: RGBA }[] | null = null;
+
+function clamp(value: number, min: number, max: number) {
+   return Math.min(max, Math.max(min, value));
+}
+
+function parseRgbFunction(raw: string): RGBA | null {
+   const match = raw.trim().match(/^rgba?\((.*)\)$/i);
+   if (!match) return null;
+
+   const body = match[1].trim().replace(/\s*\/\s*/g, ",");
+   const parts = body.includes(",") ? body.split(/\s*,\s*/) : body.split(/\s+/);
+   if (parts.length < 3) return null;
+
+   const parseChannel = (value: string) => {
+      const v = value.trim();
+      if (v.endsWith("%")) return clamp((parseFloat(v) / 100) * 255, 0, 255);
+      return clamp(parseFloat(v), 0, 255);
+   };
+   const parseAlpha = (value: string) => {
+      const v = value.trim();
+      if (!v) return 1;
+      if (v.endsWith("%")) return clamp(parseFloat(v) / 100, 0, 1);
+      return clamp(parseFloat(v), 0, 1);
+   };
+
+   const r = parseChannel(parts[0]);
+   const g = parseChannel(parts[1]);
+   const b = parseChannel(parts[2]);
+   const a = parts[3] ? parseAlpha(parts[3]) : 1;
+
+   if (![r, g, b, a].every(Number.isFinite)) return null;
+   return { r: Math.round(r), g: Math.round(g), b: Math.round(b), a };
+}
+
+function ensureColorParserEl() {
+   if (typeof document === "undefined") return null;
+   if (colorParserEl?.isConnected) return colorParserEl;
+
+   const root = document.body || document.documentElement;
+   if (!root) return null;
+
+   const el = document.createElement("span");
+   Object.assign(el.style, {
+      position: "fixed",
+      left: "-9999px",
+      top: "-9999px",
+      visibility: "hidden",
+      pointerEvents: "none",
+   });
+   root.appendChild(el);
+   colorParserEl = el;
+   return colorParserEl;
+}
+
+function parseCssColor(value: string): RGBA | null {
+   const raw = value.trim();
+   const cacheKey = raw.toLowerCase();
+   if (colorParseCache.has(cacheKey)) {
+      return colorParseCache.get(cacheKey) ?? null;
+   }
+   if (cacheKey === "transparent") {
+      const transparent = { r: 0, g: 0, b: 0, a: 0 };
+      colorParseCache.set(cacheKey, transparent);
+      return transparent;
+   }
+
+   const parser = ensureColorParserEl();
+   if (!parser) return null;
+
+   parser.style.color = "";
+   parser.style.color = raw;
+   if (!parser.style.color) {
+      colorParseCache.set(cacheKey, null);
+      return null;
+   }
+
+   const resolved = getComputedStyle(parser).color;
+   const rgba = parseRgbFunction(resolved);
+   colorParseCache.set(cacheKey, rgba);
+   return rgba;
+}
+
+function colorDistance(lhs: RGBA, rhs: RGBA) {
+   const dr = lhs.r - rhs.r;
+   const dg = lhs.g - rhs.g;
+   const db = lhs.b - rhs.b;
+   const da = (lhs.a - rhs.a) * 255;
+   return Math.sqrt(dr * dr + dg * dg + db * db + da * da * 0.5);
+}
+
+function buildColorEntries() {
+   const colors = (fullConfig as ConverterConfig).theme?.colors;
+   if (!colors || typeof colors !== "object") return [];
+
+   const found: { token: string; rgba: RGBA }[] = [];
+   const walk = (node: unknown, path: string[]) => {
+      if (typeof node === "string") {
+         if (node.includes("var(")) return;
+         const token = path.join("-");
+         if (!token) return;
+         const rgba = parseCssColor(node);
+         if (rgba) found.push({ token, rgba });
+         return;
+      }
+      if (!node || typeof node !== "object") return;
+
+      for (const [key, value] of Object.entries(node)) {
+         if (key === "DEFAULT") walk(value, path);
+         else walk(value, [...path, key]);
+      }
+   };
+
+   walk(colors, []);
+
+   const deduped = new Map<string, RGBA>();
+   for (const entry of found) {
+      if (!deduped.has(entry.token)) deduped.set(entry.token, entry.rgba);
+   }
+   return Array.from(deduped.entries()).map(([token, rgba]) => ({ token, rgba }));
+}
+
+function getThemeColorEntries() {
+   if (themeColorEntriesCache) return themeColorEntriesCache;
+   themeColorEntriesCache = buildColorEntries();
+   return themeColorEntriesCache;
+}
+
+function resolveTailwindColorToken(value: string) {
+   const target = parseCssColor(value);
+   if (!target) return null;
+
+   // 투명색은 임의값 표기법으로 유지 (text-transparent 등 오변환 방지)
+   if (target.a < 0.999) return null;
+
+   const entries = getThemeColorEntries();
+   if (!entries.length) return null;
+
+   let bestToken: string | null = null;
+   let bestDistance = Infinity;
+   for (const entry of entries) {
+      const dist = colorDistance(target, entry.rgba);
+      if (dist < bestDistance) {
+         bestDistance = dist;
+         bestToken = entry.token;
+      }
+   }
+
+   // 색상 거리 임계치 초과 시 arbitrary value 유지
+   if (!bestToken || bestDistance > 18) return null;
+   return bestToken;
+}
+
+function makeColorClass(prefix: string, value: string) {
+   const token = resolveTailwindColorToken(value);
+   if (token) return `${prefix}-${token}`;
+   return `${prefix}-[${normalizeColor(value)}]`;
+}
+
 /* ========== Build Maps from Tailwind config ========== */
 function buildSpacingMap() {
    const spacing = fullConfig.theme.spacing;
@@ -51,11 +238,13 @@ function buildSpacingMap() {
    return map;
 }
 function buildFontSizeMap() {
-   const fontSize = fullConfig.theme.fontSize;
+   const fontSize = (fullConfig as ConverterConfig).theme.fontSize;
    const map: Record<string, string> = {};
    for (const [key, val] of Object.entries(fontSize)) {
-      const arr = val as any[];
-      map[normalize(arr[0])] = key; // ex: "16px" → "base"
+      const raw = Array.isArray(val) ? val[0] : val;
+      if (typeof raw === "string") {
+         map[normalize(raw)] = key; // ex: "16px" → "base"
+      }
    }
    return map;
 }
@@ -137,7 +326,7 @@ function convertSingleProp(prop: string, value: string): string | null {
    // ----- Spacing -----
    if (prop.startsWith("margin")) {
       if (isZero(value)) return null;
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, spacingTolerance);
       if (!key) return `m-[${value}]`;
       if (prop === "margin") return `m-${key}`;
       if (prop === "margin-top") return `mt-${key}`;
@@ -148,7 +337,7 @@ function convertSingleProp(prop: string, value: string): string | null {
 
    if (prop.startsWith("padding")) {
       if (isZero(value)) return null;
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, spacingTolerance);
       if (!key) return `p-[${value}]`;
       if (prop === "padding") return `p-${key}`;
       if (prop === "padding-top") return `pt-${key}`;
@@ -169,7 +358,7 @@ function convertSingleProp(prop: string, value: string): string | null {
       }
    }
    if (prop === "font-size") {
-      const key = closest(parseFloat(value), fontSizeMap);
+      const key = pickClosestKey(parseFloat(value), fontSizeMap, fontSizeTolerance);
       return key ? `text-${key}` : `text-[${value}]`;
    }
    if (prop === "font-weight") {
@@ -187,10 +376,10 @@ function convertSingleProp(prop: string, value: string): string | null {
       if (value === "right") return "text-right";
    }
    if (prop === "text-overflow" && value === "ellipsis") return "truncate";
-   if (prop === "color") return `text-[${normalizeColor(value)}]`;
+   if (prop === "color") return makeColorClass("text", value);
 
    // ----- Background -----
-   if (prop === "background-color") return `bg-[${normalizeColor(value)}]`;
+   if (prop === "background-color") return makeColorClass("bg", value);
 
    // ----- Borders -----
    // ----- Borders -----
@@ -202,7 +391,7 @@ function convertSingleProp(prop: string, value: string): string | null {
    }
 
    if (prop === "border-color") {
-      return `border-[${normalizeColor(value)}]`;
+      return makeColorClass("border", value);
    }
 
    if (prop === "border-style") {
@@ -247,10 +436,10 @@ function convertSingleProp(prop: string, value: string): string | null {
    }
 
    // ----- Border Sides (color) -----
-   if (prop === "border-top-color") return `border-t-[${normalizeColor(value)}]`;
-   if (prop === "border-right-color") return `border-r-[${normalizeColor(value)}]`;
-   if (prop === "border-bottom-color") return `border-b-[${normalizeColor(value)}]`;
-   if (prop === "border-left-color") return `border-l-[${normalizeColor(value)}]`;
+   if (prop === "border-top-color") return makeColorClass("border-t", value);
+   if (prop === "border-right-color") return makeColorClass("border-r", value);
+   if (prop === "border-bottom-color") return makeColorClass("border-b", value);
+   if (prop === "border-left-color") return makeColorClass("border-l", value);
 
    // ----- Border Sides (style) -----
    if (prop === "border-top-style") return `border-t-${value}`;
@@ -259,7 +448,7 @@ function convertSingleProp(prop: string, value: string): string | null {
    if (prop === "border-left-style") return `border-l-${value}`;
 
    if (prop.includes("radius")) {
-      const key = closest(parseFloat(value), radiusMap);
+      const key = pickClosestKey(parseFloat(value), radiusMap, radiusTolerance);
 
       if (key === "DEFAULT") {
          return "rounded"; // ✅ 기본값은 그냥 rounded
@@ -309,34 +498,34 @@ function convertSingleProp(prop: string, value: string): string | null {
    if (prop === "width") {
       if (isZero(value)) return "w-0";
       if (value === "100%") return "w-full";
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `w-${key}` : `w-[${value}]`;
    }
 
    if (prop === "min-width") {
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `min-w-${key}` : `min-w-[${value}]`;
    }
 
    if (prop === "max-width") {
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `max-w-${key}` : `max-w-[${value}]`;
    }
 
    if (prop === "height") {
       if (isZero(value)) return "h-0";
       if (value === "100%") return "h-full";
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `h-${key}` : `h-[${value}]`;
    }
 
    if (prop === "min-height") {
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `min-h-${key}` : `min-h-[${value}]`;
    }
 
    if (prop === "max-height") {
-      const key = closest(parseFloat(value), spacingMap);
+      const key = pickClosestKey(parseFloat(value), spacingMap, sizeTolerance);
       return key ? `max-h-${key}` : `max-h-[${value}]`;
    }
 

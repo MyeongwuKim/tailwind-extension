@@ -14,9 +14,18 @@ interface TWItem {
 interface ClassInputProps {
    type: "Active" | "Focus" | "Hover" | "Disabled";
    preview?: HTMLElement | null;
+   seedTags?: string[];
+   seedKey?: number;
+   onTagsChange?: (tags: string[]) => void;
 }
 
-export default function ClassInput({ type, preview }: ClassInputProps) {
+export default function ClassInput({
+   type,
+   preview,
+   seedTags = [],
+   seedKey,
+   onTagsChange,
+}: ClassInputProps) {
    const [tags, setTags] = useState<string[]>([]);
    const [input, setInput] = useState("");
    const [isComposing, setIsComposing] = useState(false);
@@ -38,6 +47,20 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
 
    const inputRef = useRef<HTMLInputElement>(null);
    const roRef = useRef<ResizeObserver | null>(null);
+
+   /* ========== 외부 seed 적용 (preset/target 변경) ========== */
+   useEffect(() => {
+      if (seedKey === undefined) return;
+      setTags(seedTags);
+      setInput("");
+      setSuggestions([]);
+      setHighlightIndex(-1);
+      setColorPicker((prev) => ({ ...prev, visible: false }));
+   }, [seedKey, seedTags]);
+
+   useEffect(() => {
+      onTagsChange?.(tags);
+   }, [tags, onTagsChange]);
 
    /* ========== Fuse 검색 엔진 ========== */
    const fuse = useMemo(
@@ -302,7 +325,7 @@ export default function ClassInput({ type, preview }: ClassInputProps) {
       preview.style.removeProperty(varName);
 
       // 🎯 스위치 클래스 제거
-      const map: Record<string, string> = { bg: "bg", text: "text", border: "bc" };
+      const map: Record<string, string> = { bg: "bg", text: "text", border: "bc", ring: "ring" };
       const switchClass = `ex-ov-${variant}-${map[prefix]}`;
       preview.classList.remove(switchClass);
    };

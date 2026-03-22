@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
-import { categorizeClasses, cssToTailwind, getClassAppliedStyles } from "../../hooks/useConverter";
-import CopyButton from "../../components/CopyButton";
+import {
+   categorizeClasses,
+   convertWithReasons,
+   cssToTailwind,
+   getClassAppliedStyles,
+} from "../../hooks/useConverter";
 import ItemButton from "../../components/ButtonItem";
+import CopyFormatDropdown from "../../components/CopyFormatDropdown";
 import { logger } from "../../hooks/useUtils";
+import { cleanClassString } from "../../hooks/classCleaner";
 
 type BreadcrumbItem =
    | { kind: "node"; element: HTMLElement; index: number }
@@ -18,10 +24,16 @@ export default function ConverterPopover({
    const [pos] = useState({ top: 0, left: 0 });
    const [baseTarget, setBaseTarget] = useState<HTMLElement>(target);
    const [selectedTarget, setSelectedTarget] = useState<HTMLElement>(target);
+   const [showReasons, setShowReasons] = useState(false);
+   const [showCleaned, setShowCleaned] = useState(true);
+   const [copiedLabel, setCopiedLabel] = useState("");
 
    useEffect(() => {
       setBaseTarget(target);
       setSelectedTarget(target);
+      setShowReasons(false);
+      setShowCleaned(true);
+      setCopiedLabel("");
    }, [target]);
 
    const ancestorChain = useMemo(() => {
@@ -80,17 +92,50 @@ export default function ConverterPopover({
       onTargetChange?.(el);
    };
 
-   const { tailwindStyles, classCategory } = useMemo(() => {
+   const { tailwindStyles, classCategory, reasons } = useMemo(() => {
       if (!selectedTarget || !selectedTarget.isConnected)
-         return { tailwindStyles: "", classCategory: null };
+         return { tailwindStyles: "", classCategory: null, reasons: [] };
 
       const styleObj = getClassAppliedStyles(selectedTarget);
       logger("1", styleObj);
       const tailwindStyles = cssToTailwind(styleObj as Record<string, string>);
       const classCategory = categorizeClasses(tailwindStyles);
+      const reasons = convertWithReasons(styleObj as Record<string, string>);
       logger("styleObj(raw):", classCategory);
-      return { tailwindStyles, classCategory };
+      return { tailwindStyles, classCategory, reasons };
    }, [selectedTarget]);
+   const cleanedTailwindStyles = useMemo(() => cleanClassString(tailwindStyles), [tailwindStyles]);
+   const visibleTailwindStyles = showCleaned ? cleanedTailwindStyles : tailwindStyles;
+   const getCopyPayload = (format: "className" | "apply" | "multiline") => {
+      const source = visibleTailwindStyles.trim();
+      if (!source) return "";
+      if (format === "apply") {
+         return `.converted {\n  @apply ${source};\n}`;
+      }
+      if (format === "multiline") {
+         return source.split(/\s+/).filter(Boolean).join("\n");
+      }
+      return `className="${source}"`;
+   };
+
+   const handleCopyByFormat = async (format: "className" | "apply" | "multiline") => {
+      const payload = getCopyPayload(format);
+      if (!payload) return;
+      try {
+         await navigator.clipboard.writeText(payload);
+         setCopiedLabel(
+            format === "className" ? "Copied className" : format === "apply" ? "Copied @apply" : "Copied multiline"
+         );
+      } catch {
+         setCopiedLabel("Copy failed");
+      }
+   };
+
+   useEffect(() => {
+      if (!copiedLabel) return;
+      const t = window.setTimeout(() => setCopiedLabel(""), 1400);
+      return () => window.clearTimeout(t);
+   }, [copiedLabel]);
 
    return (
       <div
@@ -118,7 +163,7 @@ export default function ConverterPopover({
          </div>
 
          <div className="ex-tw-p-4">
-            <div className="ex-tw-gap-4">
+            <div className="ex-tw-gap-6">
                <div id="ancestor-area" className="ex-tw-mb-4">
                   <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1 ex-tw-mb-1">
                      Parent Chain
@@ -146,16 +191,92 @@ export default function ConverterPopover({
                   </div>
                </div>
 
-               <div id="tailwindClasses-area">
-                  <div className="ex-tw-text-base ex-tw-leading-relaxed ex-tw-text-text2 ex-tw-break-words">
-                     {tailwindStyles}
+               <div id="tailwindClasses-area" className="ex-tw-pb-1">
+                  <div className="ex-tw-flex ex-tw-gap-2 ex-tw-mb-2">
+                     <button
+                        type="button"
+                        onClick={() => setShowCleaned(false)}
+                        className={`ex-tw-text-xs ex-tw-px-2 ex-tw-py-1 ex-tw-rounded ex-tw-border ${
+                           showCleaned
+                              ? "ex-tw-border-border1 ex-tw-text-text3"
+                              : "ex-tw-border-text5 ex-tw-text-text5"
+                        }`}
+                     >
+                        Raw
+                     </button>
+                     <button
+                        type="button"
+                        onClick={() => setShowCleaned(true)}
+                        className={`ex-tw-text-xs ex-tw-px-2 ex-tw-py-1 ex-tw-rounded ex-tw-border ${
+                           showCleaned
+                              ? "ex-tw-border-text5 ex-tw-text-text5"
+                              : "ex-tw-border-border1 ex-tw-text-text3"
+                        }`}
+                     >
+                        Clean
+                     </button>
                   </div>
-                  <div className="ex-tw-flex ex-tw-justify-end ex-tw-mt-4">
-                     <CopyButton textToCopy={tailwindStyles} className="ex-tw-w-32 ex-tw-h-10" />
+                  <div className="ex-tw-text-base ex-tw-leading-relaxed ex-tw-text-text2 ex-tw-break-words">
+                     {visibleTailwindStyles}
+                  </div>
+                  <div className="ex-tw-flex ex-tw-justify-between ex-tw-items-center ex-tw-mt-4">
+                     <div />
+                     <CopyFormatDropdown
+                        buttonLabel={copiedLabel || "Copy"}
+                        disabled={!visibleTailwindStyles.trim()}
+                        onSelect={handleCopyByFormat}
+                     />
                   </div>
                </div>
+               <div id="reason-area" className="ex-tw-gap-2 ex-tw-flex ex-tw-flex-col ex-tw-py-2">
+                  <div className="ex-tw-flex ex-tw-items-center ex-tw-justify-between">
+                     <h3 className="ex-tw-font-medium ex-tw-text-lg ex-tw-text-text1">
+                        Conversion Reasons
+                     </h3>
+                     <button
+                        type="button"
+                        onClick={() => setShowReasons((prev) => !prev)}
+                        className="ex-tw-text-xs ex-tw-px-2 ex-tw-py-1 ex-tw-rounded ex-tw-border ex-tw-border-border1 ex-tw-text-text2 hover:ex-tw-bg-background2"
+                     >
+                        {showReasons ? "Hide" : "Show"}
+                     </button>
+                  </div>
+                  {showReasons &&
+                     (reasons.length === 0 ? (
+                        <span className="ex-tw-text-sm ex-tw-text-text3">No conversion metadata</span>
+                     ) : (
+                        <div className="ex-tw-flex ex-tw-flex-col ex-tw-gap-2">
+                           {reasons.map((item, i) => (
+                              <div
+                                 key={`${item.className}-${item.sourceProp}-${i}`}
+                                 className="ex-tw-border ex-tw-border-border1 ex-tw-rounded ex-tw-p-2 ex-tw-bg-background2"
+                              >
+                                 <div className="ex-tw-flex ex-tw-items-center ex-tw-justify-between">
+                                    <code className="ex-tw-text-xs ex-tw-text-text1">
+                                       {item.className}
+                                    </code>
+                                    <span
+                                       className={`ex-tw-text-[10px] ex-tw-px-2 ex-tw-py-0.5 ex-tw-rounded-full ${
+                                          item.quality === "exact"
+                                             ? "ex-tw-bg-emerald-100 ex-tw-text-emerald-700"
+                                             : item.quality === "near"
+                                               ? "ex-tw-bg-amber-100 ex-tw-text-amber-700"
+                                               : "ex-tw-bg-red-100 ex-tw-text-red-700"
+                                       }`}
+                                    >
+                                       {item.quality}
+                                    </span>
+                                 </div>
+                                 <div className="ex-tw-mt-1 ex-tw-text-[11px] ex-tw-text-text3">
+                                    {item.sourceProp}: {item.sourceValue}
+                                 </div>
+                              </div>
+                           ))}
+                        </div>
+                     ))}
+               </div>
 
-               <div id="category-area" className="ex-tw-gap-2 ex-tw-flex ex-tw-flex-col">
+               <div id="category-area" className="ex-tw-gap-3 ex-tw-flex ex-tw-flex-col ex-tw-pt-1">
                   {classCategory &&
                      (Object.keys(classCategory) as (keyof typeof classCategory)[]).map(
                         (category, i) => (

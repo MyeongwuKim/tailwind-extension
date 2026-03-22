@@ -9,6 +9,13 @@ type ConverterConfig = {
       fontSize: Record<string, unknown>;
    };
 };
+export type ConversionQuality = "exact" | "near" | "fallback";
+export type ConversionReason = {
+   className: string;
+   sourceProp: string;
+   sourceValue: string;
+   quality: ConversionQuality;
+};
 
 function remToPx(rem: string) {
    return `${parseFloat(rem) * 16}px`;
@@ -237,6 +244,14 @@ function buildSpacingMap() {
    }
    return map;
 }
+function buildSpacingValueMap() {
+   const spacing = fullConfig.theme.spacing;
+   const map: Record<string, string> = {};
+   for (const [key, val] of Object.entries(spacing)) {
+      map[key] = normalize(val as string);
+   }
+   return map;
+}
 function buildFontSizeMap() {
    const fontSize = (fullConfig as ConverterConfig).theme.fontSize;
    const map: Record<string, string> = {};
@@ -248,11 +263,30 @@ function buildFontSizeMap() {
    }
    return map;
 }
+function buildFontSizeValueMap() {
+   const fontSize = (fullConfig as ConverterConfig).theme.fontSize;
+   const map: Record<string, string> = {};
+   for (const [key, val] of Object.entries(fontSize)) {
+      const raw = Array.isArray(val) ? val[0] : val;
+      if (typeof raw === "string") {
+         map[key] = normalize(raw);
+      }
+   }
+   return map;
+}
 function buildRadiusMap() {
    const radius = fullConfig.theme.borderRadius;
    const map: Record<string, string> = {};
    for (const [key, val] of Object.entries(radius)) {
       map[normalize(val as string)] = key;
+   }
+   return map;
+}
+function buildRadiusValueMap() {
+   const radius = fullConfig.theme.borderRadius;
+   const map: Record<string, string> = {};
+   for (const [key, val] of Object.entries(radius)) {
+      map[key] = normalize(val as string);
    }
    return map;
 }
@@ -313,8 +347,11 @@ function convertBoxShadow(value: string): string {
 }
 
 const spacingMap = buildSpacingMap();
+const spacingValueMap = buildSpacingValueMap();
 const fontSizeMap = buildFontSizeMap();
+const fontSizeValueMap = buildFontSizeValueMap();
 const radiusMap = buildRadiusMap();
+const radiusValueMap = buildRadiusValueMap();
 
 function convertSingleProp(prop: string, value: string): string | null {
    // ----- shadow -----
@@ -601,6 +638,57 @@ export function cssToTailwind(styles: Record<string, string>): string {
    }
 
    return optimizeSpacing(rawClasses).join(" ");
+}
+
+function getQualityForToken(prop: string, value: string, token: string): ConversionQuality {
+   if (token.includes("[")) return "fallback";
+
+   const v = parseFloat(value);
+   if (!Number.isFinite(v)) return "exact";
+
+   const spacingKeyMatch = token.match(/^(m[trblxy]?|p[trblxy]?|w|min-w|max-w|h|min-h|max-h)-(.+)$/);
+   if (spacingKeyMatch) {
+      const key = spacingKeyMatch[2];
+      const mapped = spacingValueMap[key];
+      if (!mapped) return "exact";
+      return Math.abs(parseFloat(mapped) - v) < 0.01 ? "exact" : "near";
+   }
+
+   const textSizeMatch = token.match(/^text-(.+)$/);
+   if (prop === "font-size" && textSizeMatch) {
+      const mapped = fontSizeValueMap[textSizeMatch[1]];
+      if (!mapped) return "exact";
+      return Math.abs(parseFloat(mapped) - v) < 0.01 ? "exact" : "near";
+   }
+
+   const radiusMatch = token.match(/^rounded(?:-(.+))?$/);
+   if (prop.includes("radius") && radiusMatch) {
+      const key = radiusMatch[1] || "DEFAULT";
+      const mapped = radiusValueMap[key];
+      if (!mapped) return "exact";
+      return Math.abs(parseFloat(mapped) - v) < 0.01 ? "exact" : "near";
+   }
+
+   return "exact";
+}
+
+export function convertWithReasons(styles: Record<string, string>): ConversionReason[] {
+   const reasons: ConversionReason[] = [];
+
+   for (const [prop, value] of Object.entries(styles)) {
+      const cls = convertSingleProp(prop, value);
+      if (!cls) continue;
+      const tokens = cls.split(/\s+/).filter(Boolean);
+      for (const token of tokens) {
+         reasons.push({
+            className: token,
+            sourceProp: prop,
+            sourceValue: value,
+            quality: getQualityForToken(prop, value, token),
+         });
+      }
+   }
+   return reasons;
 }
 
 export function getClassAppliedStyles(el: HTMLElement) {

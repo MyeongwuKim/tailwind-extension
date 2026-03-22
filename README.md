@@ -10,7 +10,7 @@
 - 페이지 요소 선택 시 computed style을 읽어 **Tailwind 클래스 자동 변환**
 - `hover / active / focus / disabled` 상태를 **UI Tester에서 실시간 시뮬레이션**
 - 사이트 CSS 충돌을 줄이기 위해 **iframe 격리 UI**로 동작
-- 최근 개선: **변환 정확도 개선 + 부모 체인 탐색 + 프리셋 저장/정렬/덮어쓰기**
+- 최근 개선: **프리셋 Import/Export + 부분 적용 + 공용 드랍다운 컴포넌트화**
 
 ---
 
@@ -32,20 +32,27 @@
 ### 3) Preset Workflow
 
 - 상태 입력값 프리셋 **Save / Update / Delete / Apply**
+- 프리셋 **Import / Export (JSON)** 지원
 - `chrome.storage.local` 저장
 - 중복 이름 방지, 최신순/이름순 정렬 지원
+- `None` 기본 옵션 제공 (프리셋 선택 해제)
+- 상태별 부분 적용 지원 (`Active / Hover / Disabled / Focus` 체크 기반)
 - 버튼 액션 피드백(`Saved! / Updated! / Deleted!`) 제공
 
 ---
 
-## 🔧 Recent Improvements (2026.03.21 ~ 2026.03.22)
+## 🔧 Recent Improvements (2026.03.21 ~ 2026.03.22, v1.1.0)
 
 - Converter 수치 매핑에 임계값(tolerance) 적용  
   (오차 큰 값은 스케일 강제 매핑 대신 arbitrary value fallback)
 - 색상 거리 기반 Tailwind 토큰 매칭 추가 (`text-*`, `bg-*`, `border-*`)
 - content 빌드 시 `dist` 산출물 유실 문제 수정 (`emptyOutDir: false`)
 - Tester 프리셋 패널을 플로팅 형태로 분리 + 스크롤/클리핑 이슈 수정
+- 프리셋 Import/Export(JSON), 이름 충돌 처리, 빈 상태 UI(`No presets`) 추가
+- 상태별 부분 적용(`partial apply`) 추가
+- 드랍다운 UI 공용 컴포넌트화 + 외부 클릭 닫힘/포지셔닝 보정
 - Converter/Tester/Popup 컨테이너 다크모드 컬러 톤 통일
+- 매니페스트 권한 정리: 미사용 `scripting` 제거
 
 ---
 
@@ -55,6 +62,13 @@
 - **Build:** Vite 7 (multi entry: popup/background/content)
 - **Extension:** Chrome Extension Manifest V3
 - **Etc:** Fuse.js, react-colorful
+
+---
+
+## 🔐 Permissions
+
+- 사용 권한: `contextMenus`, `storage`, `activeTab`
+- 정책 대응: 미사용 권한 `scripting` 제거
 
 ---
 
